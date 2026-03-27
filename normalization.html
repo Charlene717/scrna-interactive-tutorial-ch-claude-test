@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Normalization · scRNA-seq Tutorial</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<script src="navbar.js"></script>
+<div class="page-wrap">
+
+  <div class="page-hero fade-up">
+    <div class="step-tag">Step 02</div>
+    <h1 class="page-title">Normalization</h1>
+    <p class="page-subtitle">
+      不同細胞因捕獲效率或測序深度不同，導致 UMI 總數差異極大。
+      Normalization 讓這些細胞的基因表達值具有可比較性。
+    </p>
+    <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
+      <span class="badge badge-teal">LogNormalize</span>
+      <span class="badge badge-purple">SCTransform</span>
+      <span class="badge badge-blue">NormalizeData</span>
+    </div>
+  </div>
+
+  <!-- WHY -->
+  <div class="section fade-up">
+    <div class="section-title">為什麼需要 Normalization？</div>
+    <div class="callout callout-info">
+      <div class="callout-title">📌 核心問題</div>
+      <p>細胞 A 測到 5,000 個 UMI，細胞 B 測到 20,000 個 UMI。若基因 X 在 A 中有 100 個 UMI、在 B 中有 200 個，兩者基因 X 的「真實表達量」是否相同？答案是：A 的 100/5000 = 2%，B 的 200/20000 = 1%，其實 A 表達更高。</p>
+    </div>
+  </div>
+
+  <!-- INTERACTIVE -->
+  <div class="section fade-up">
+    <div class="section-title">互動演示：校正前 vs 校正後</div>
+    <div class="card" style="padding:2rem">
+      <p style="color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem">模擬三個細胞在校正前後，同一批基因的表達差異。</p>
+      <div class="slider-group">
+        <div class="slider-label">細胞 A 的測序深度 (UMI 總數) <span id="v-depth-a">5000</span></div>
+        <input type="range" id="s-depth-a" min="1000" max="20000" step="500" value="5000">
+      </div>
+      <div class="slider-group">
+        <div class="slider-label">細胞 B 的測序深度 (UMI 總數) <span id="v-depth-b">15000</span></div>
+        <input type="range" id="s-depth-b" min="1000" max="20000" step="500" value="15000">
+      </div>
+      <div class="plot-container">
+        <canvas id="norm-canvas" height="220"></canvas>
+      </div>
+      <div id="norm-note" style="font-family:var(--font-mono);font-size:0.78rem;color:var(--text2);margin-top:1rem;text-align:center"></div>
+    </div>
+  </div>
+
+  <!-- R CODE -->
+  <div class="section fade-up">
+    <div class="section-title">R (Seurat) 程式碼</div>
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="n1">LogNormalize（常用）</button>
+      <button class="tab-btn" data-tab="n2">SCTransform（推薦）</button>
+    </div>
+    <div data-panel="n1" class="tab-panel active">
+      <div class="code-wrap">
+        <div class="code-header"><span class="lang-tag">◆ R · Seurat</span><button class="copy-btn">Copy</button></div>
+        <pre><span class="cm"># 方法一：LogNormalize（預設，最廣泛使用）</span>
+<span class="cm"># 公式：log1p(count / total_UMI * scale.factor)</span>
+seurat_obj <span class="op">&lt;-</span> <span class="fn">NormalizeData</span>(
+  seurat_obj,
+  <span class="op">normalization.method =</span> <span class="st">"LogNormalize"</span>,
+  <span class="op">scale.factor =</span> <span class="nm">10000</span>   <span class="cm"># 統一縮放到每個細胞 10,000 counts</span>
+)
+
+<span class="cm"># 結果存在 seurat_obj[["RNA"]]@data（log 化的 counts）</span>
+<span class="cm"># 原始 counts 保留在 seurat_obj[["RNA"]]@counts</span>
+
+<span class="cm"># 確認：看看前幾個細胞的前幾個基因</span>
+seurat_obj[["RNA"]]@data[<span class="nm">1</span><span class="op">:</span><span class="nm">5</span>, <span class="nm">1</span><span class="op">:</span><span class="nm">5</span>]</pre>
+      </div>
+    </div>
+    <div data-panel="n2" class="tab-panel">
+      <div class="code-wrap">
+        <div class="code-header"><span class="lang-tag">◆ R · SCTransform (v2)</span><button class="copy-btn">Copy</button></div>
+        <pre><span class="cm"># 方法二：SCTransform（使用 Pearson 殘差，更先進）</span>
+<span class="cm"># 同時完成 Normalization + Scaling，且自動處理測序深度影響</span>
+<span class="cm"># 安裝：install.packages("glmGamPoi")</span>
+<span class="kw">library</span>(glmGamPoi)
+
+seurat_obj <span class="op">&lt;-</span> <span class="fn">SCTransform</span>(
+  seurat_obj,
+  <span class="op">vst.flavor =</span> <span class="st">"v2"</span>,          <span class="cm"># 推薦使用 v2</span>
+  <span class="op">vars.to.regress =</span> <span class="st">"percent.mt"</span>,  <span class="cm"># 可額外回歸掉粒線體效應</span>
+  <span class="op">verbose =</span> <span class="kw">FALSE</span>
+)
+
+<span class="cm"># 注意：使用 SCTransform 後，後續 PCA 等步驟會自動使用</span>
+<span class="cm"># SCT assay，不需要再執行 FindVariableFeatures 和 ScaleData</span>
+
+<span class="cm"># 查看 SCT assay 的資訊</span>
+seurat_obj[["SCT"]]</pre>
+      </div>
+    </div>
+  </div>
+
+  <!-- COMPARISON TABLE -->
+  <div class="section fade-up">
+    <div class="section-title">方法比較</div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>方法</th><th>原理</th><th>優點</th><th>注意事項</th></tr></thead>
+        <tbody>
+          <tr>
+            <td><strong>LogNormalize</strong></td>
+            <td>除以 total UMI × 10,000，再取 log1p</td>
+            <td class="td-green">快速、廣泛支援、易於理解</td>
+            <td class="td-yellow">仍受測序深度影響</td>
+          </tr>
+          <tr>
+            <td><strong>SCTransform v2</strong></td>
+            <td>廣義線性模型（GLM）計算 Pearson 殘差</td>
+            <td class="td-green">更準確校正技術效應、適合整合分析</td>
+            <td class="td-yellow">計算較慢，需要額外套件</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <div class="callout-title">💡 何時選 SCTransform？</div>
+    <p>若你的分析涉及多樣本整合（Harmony/Seurat CCA），或資料中測序深度差異很大，建議使用 SCTransform v2。一般單樣本分析，LogNormalize 已足夠。</p>
+  </div>
+
+  <!-- QUIZ -->
+  <div class="section fade-up">
+    <div class="section-title">知識測驗</div>
+    <div id="quiz-container"></div>
+  </div>
+
+  <div class="page-nav">
+    <a class="page-nav-btn prev" href="qc.html">
+      <div class="nav-btn-arrow">←</div>
+      <div><div class="nav-btn-meta">上一步 Step 01</div><div class="nav-btn-title">QC</div></div>
+    </a>
+    <a class="page-nav-btn" href="variable-features.html">
+      <div><div class="nav-btn-meta">下一步 Step 03</div><div class="nav-btn-title">Variable Features</div></div>
+      <div class="nav-btn-arrow">→</div>
+    </a>
+  </div>
+</div>
+<footer>© Charlene — scRNA-seq Interactive Tutorial Hub</footer>
+<script src="shared.js"></script>
+<script>
+// Norm Canvas
+const cv = document.getElementById('norm-canvas');
+const cx = cv.getContext('2d');
+const dpr = devicePixelRatio || 1;
+cv.width = (cv.offsetWidth || 500) * dpr;
+cv.height = 220 * dpr;
+cx.scale(dpr, dpr);
+
+const geneRawCounts = [120, 300, 80, 500, 200]; // Raw counts for cell A
+const geneNames = ['GeneA','GeneB','GeneC','GeneD','GeneE'];
+
+function drawNorm() {
+  const dA = +document.getElementById('s-depth-a').value;
+  const dB = +document.getElementById('s-depth-b').value;
+  document.getElementById('v-depth-a').textContent = dA.toLocaleString();
+  document.getElementById('v-depth-b').textContent = dB.toLocaleString();
+
+  const W = cv.offsetWidth || 500, H = 220;
+  cx.clearRect(0,0,W,H);
+  cx.fillStyle='#0f1525'; cx.fillRect(0,0,W,H);
+
+  // Cell B has different proportions to show the problem
+  const rawB = geneRawCounts.map((c,i) => Math.round(c * (dB/5000) * (i%2===0?1.2:0.8)));
+  const normA = geneRawCounts.map(c => Math.log1p(c/dA*10000));
+  const normB = rawB.map(c => Math.log1p(c/dB*10000));
+
+  const maxRaw = Math.max(...geneRawCounts, ...rawB);
+  const maxNorm = Math.max(...normA, ...normB);
+
+  const n = geneNames.length;
+  const barW = 18, gap = 6, groupW = barW*2+gap+20;
+  const startX = 50;
+
+  // Before normalization
+  cx.fillStyle='#6880a8'; cx.font='10px monospace';
+  cx.fillText('校正前 (Raw counts)', 10, 20);
+  cx.fillText('校正後 (Log-normalized)', W/2+10, 20);
+
+  for (let i=0; i<n; i++) {
+    const x = startX + i*groupW;
+    const hA = (geneRawCounts[i]/maxRaw)*(H-50);
+    const hB = (rawB[i]/maxRaw)*(H-50);
+    // Cell A bar
+    cx.fillStyle='rgba(0,212,200,0.8)';
+    cx.fillRect(x, H-10-hA, barW, hA);
+    // Cell B bar
+    cx.fillStyle='rgba(155,109,255,0.8)';
+    cx.fillRect(x+barW+gap, H-10-hB, barW, hB);
+    // Gene label
+    cx.fillStyle='#6880a8'; cx.font='9px monospace';
+    cx.fillText(geneNames[i], x, H-2);
+  }
+
+  // After normalization
+  const offX = W/2 + 20;
+  for (let i=0; i<n; i++) {
+    const x = offX + i*groupW;
+    const hA = (normA[i]/maxNorm)*(H-50);
+    const hB = (normB[i]/maxNorm)*(H-50);
+    cx.fillStyle='rgba(0,212,200,0.8)';
+    cx.fillRect(x, H-10-hA, barW, hA);
+    cx.fillStyle='rgba(155,109,255,0.8)';
+    cx.fillRect(x+barW+gap, H-10-hB, barW, hB);
+    cx.fillStyle='#6880a8'; cx.font='9px monospace';
+    cx.fillText(geneNames[i], x, H-2);
+  }
+
+  // Legend
+  cx.fillStyle='rgba(0,212,200,0.8)'; cx.fillRect(W-120, 8, 10, 10);
+  cx.fillStyle='rgba(155,109,255,0.8)'; cx.fillRect(W-60, 8, 10, 10);
+  cx.fillStyle='#a8b8d8'; cx.font='10px monospace';
+  cx.fillText('Cell A', W-108, 18);
+  cx.fillText('Cell B', W-48, 18);
+
+  document.getElementById('norm-note').textContent =
+    `Cell A: ${dA.toLocaleString()} UMI | Cell B: ${dB.toLocaleString()} UMI | 校正後數值應更接近`;
+}
+
+['s-depth-a','s-depth-b'].forEach(id => document.getElementById(id).addEventListener('input', drawNorm));
+drawNorm();
+
+document.querySelectorAll('.tab-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelector(`[data-panel="${btn.dataset.tab}"]`).classList.add('active');
+  });
+});
+
+initQuiz([
+  { q: 'LogNormalize 的公式是什麼？',
+    opts: ['count / max_count', 'log1p(count / total_UMI × 10,000)', '(count - mean) / std', 'count / sqrt(total_UMI)'],
+    ans: 1, explain: ' LogNormalize 先除以 total UMI 再乘以縮放因子（預設 10,000），最後取 log1p。' },
+  { q: 'SCTransform 相比 LogNormalize 的主要優勢是？',
+    opts: ['速度更快', '使用 GLM 模型更準確校正技術變異', '不需要任何參數', '只適用於人類資料'],
+    ans: 1, explain: ' SCTransform 用廣義線性模型（GLM）建模，計算 Pearson 殘差，能更有效校正測序深度等技術效應。' },
+]);
+</script>
+</body>
+</html>

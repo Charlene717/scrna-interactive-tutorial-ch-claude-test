@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>scRNA-seq Interactive Tutorial Hub</title>
+<link rel="stylesheet" href="style.css">
+<style>
+/* Index-specific */
+.hero-section {
+  min-height: calc(100vh - var(--nav-h));
+  display: flex; flex-direction: column; justify-content: center;
+  padding: 4rem 2rem;
+  position: relative; overflow: hidden;
+}
+.hero-bg {
+  position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 60% 60% at 80% 20%, rgba(0,212,200,0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 50% 50% at 20% 70%, rgba(155,109,255,0.05) 0%, transparent 70%);
+}
+.grid-bg {
+  position: absolute; inset: 0; pointer-events: none; opacity: 0.04;
+  background-image: linear-gradient(var(--border2) 1px, transparent 1px),
+                    linear-gradient(90deg, var(--border2) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+.hero-content { max-width: 1000px; margin: 0 auto; width: 100%; position: relative; }
+.hero-eyebrow {
+  font-family: var(--font-mono); font-size: 0.75rem;
+  color: var(--teal); letter-spacing: 0.2em; text-transform: uppercase;
+  margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem;
+}
+.hero-eyebrow::before { content: ''; width: 32px; height: 1px; background: var(--teal); }
+.hero-main-title {
+  font-family: var(--font-display); font-size: clamp(3rem, 8vw, 5.5rem);
+  line-height: 1.05; margin-bottom: 1.5rem; color: var(--text);
+}
+.hero-main-title em {
+  font-style: italic;
+  background: var(--grad1);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.hero-desc {
+  font-size: 1.15rem; color: var(--text2); max-width: 560px; line-height: 1.8;
+  margin-bottom: 2.5rem;
+}
+.hero-cta {
+  display: inline-flex; align-items: center; gap: 0.75rem;
+  padding: 0.9rem 2rem;
+  background: var(--teal); color: var(--bg);
+  border-radius: 8px; text-decoration: none;
+  font-family: var(--font-mono); font-size: 0.85rem; font-weight: 700;
+  transition: all 0.25s;
+}
+.hero-cta:hover { background: var(--teal2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,212,200,0.3); }
+.hero-stats {
+  display: flex; gap: 3rem; margin-top: 3rem; flex-wrap: wrap;
+}
+.hero-stat { }
+.hero-stat-n {
+  font-family: var(--font-mono); font-size: 2rem; font-weight: 700; color: var(--text);
+}
+.hero-stat-l { font-size: 0.8rem; color: var(--text3); margin-top: 0.1rem; }
+
+/* WORKFLOW OVERVIEW */
+.overview-section { max-width: 1000px; margin: 0 auto; padding: 4rem 2rem; }
+.ov-title {
+  font-family: var(--font-mono); font-size: 0.75rem; color: var(--teal);
+  text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 3rem;
+  display: flex; align-items: center; gap: 0.75rem;
+}
+.ov-title::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--border2), transparent); }
+
+.steps-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 1rem;
+}
+.step-card {
+  position: relative;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.75rem;
+  text-decoration: none;
+  transition: all 0.3s;
+  overflow: hidden;
+  display: block;
+}
+.step-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0; height: 2px;
+  background: var(--grad1); transform: scaleX(0); transform-origin: left;
+  transition: transform 0.3s;
+}
+.step-card:hover { border-color: var(--teal); transform: translateY(-4px); box-shadow: 0 12px 40px rgba(0,0,0,0.4); }
+.step-card:hover::before { transform: scaleX(1); }
+
+.sc-num {
+  font-family: var(--font-mono); font-size: 0.65rem; color: var(--text3);
+  margin-bottom: 0.75rem;
+}
+.sc-icon { font-size: 1.8rem; margin-bottom: 0.75rem; display: block; }
+.sc-title {
+  font-size: 1.05rem; font-weight: 600; color: var(--text);
+  margin-bottom: 0.5rem;
+}
+.sc-desc { font-size: 0.85rem; color: var(--text2); line-height: 1.6; }
+.sc-adv {
+  position: absolute; top: 1rem; right: 1rem;
+  font-family: var(--font-mono); font-size: 0.6rem;
+  padding: 0.15rem 0.4rem; background: rgba(155,109,255,0.15);
+  color: var(--purple); border-radius: 3px; border: 1px solid rgba(155,109,255,0.3);
+}
+
+.pipeline-visual {
+  display: flex; align-items: center; gap: 0; flex-wrap: wrap;
+  margin: 2rem 0; padding: 1.5rem;
+  background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+  overflow-x: auto;
+}
+.pv-step {
+  display: flex; align-items: center; gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: var(--surface);
+  border-radius: 6px;
+  font-family: var(--font-mono); font-size: 0.7rem; color: var(--text2);
+  white-space: nowrap;
+  border: 1px solid var(--border);
+}
+.pv-arrow { color: var(--border2); font-size: 1rem; margin: 0 0.25rem; flex-shrink: 0; }
+</style>
+</head>
+<body>
+<script src="navbar.js"></script>
+
+<section class="hero-section">
+  <div class="hero-bg"></div>
+  <div class="grid-bg"></div>
+  <div class="hero-content">
+    <div class="hero-eyebrow">Bioinformatics · scRNA-seq · Interactive Tutorial</div>
+    <h1 class="hero-main-title">單細胞 RNA 定序<br><em>互動式教學</em></h1>
+    <p class="hero-desc">
+      從原始數據到生物學洞察，完整涵蓋 QC、降維、分群、注釋與進階分析。
+      每個步驟都附有 R (Seurat) 程式碼、互動演示與知識測驗。
+    </p>
+    <a href="qc.html" class="hero-cta">開始學習 Step 01 → QC</a>
+    <div class="hero-stats">
+      <div class="hero-stat"><div class="hero-stat-n">12</div><div class="hero-stat-l">分析步驟</div></div>
+      <div class="hero-stat"><div class="hero-stat-n">R</div><div class="hero-stat-l">Seurat 程式碼</div></div>
+      <div class="hero-stat"><div class="hero-stat-n">互動</div><div class="hero-stat-l">模擬器 & 測驗</div></div>
+    </div>
+  </div>
+</section>
+
+<section class="overview-section">
+  <div class="ov-title">分析流程總覽</div>
+
+  <div class="pipeline-visual">
+    <div class="pv-step">🧪 Raw Data</div><span class="pv-arrow">→</span>
+    <div class="pv-step">🔬 QC</div><span class="pv-arrow">→</span>
+    <div class="pv-step">⚖️ Norm</div><span class="pv-arrow">→</span>
+    <div class="pv-step">✨ Var Features</div><span class="pv-arrow">→</span>
+    <div class="pv-step">📏 Scaling</div><span class="pv-arrow">→</span>
+    <div class="pv-step">📉 PCA</div><span class="pv-arrow">→</span>
+    <div class="pv-step">🧩 Clustering</div><span class="pv-arrow">→</span>
+    <div class="pv-step">🗺️ UMAP</div><span class="pv-arrow">→</span>
+    <div class="pv-step">🏷️ Annotation</div>
+  </div>
+
+  <div class="steps-grid">
+    <a class="step-card" href="qc.html">
+      <div class="sc-num">STEP 01</div>
+      <span class="sc-icon">🧪</span>
+      <div class="sc-title">Quality Control</div>
+      <div class="sc-desc">過濾低品質細胞、doublets 與環境 RNA 污染，確保後續分析的可靠性。</div>
+    </a>
+    <a class="step-card" href="normalization.html">
+      <div class="sc-num">STEP 02</div>
+      <span class="sc-icon">⚖️</span>
+      <div class="sc-title">Normalization</div>
+      <div class="sc-desc">校正細胞間測序深度差異，使不同細胞的表達值具有可比較性。</div>
+    </a>
+    <a class="step-card" href="variable-features.html">
+      <div class="sc-num">STEP 03</div>
+      <span class="sc-icon">✨</span>
+      <div class="sc-title">Variable Features</div>
+      <div class="sc-desc">挑選具有高生物學變異的基因，作為 PCA 與聚類分析的主要輸入特徵。</div>
+    </a>
+    <a class="step-card" href="scaling.html">
+      <div class="sc-num">STEP 04</div>
+      <span class="sc-icon">📏</span>
+      <div class="sc-title">Scaling</div>
+      <div class="sc-desc">進行 Z-score 標準化，讓基因在相近尺度下進入 PCA 等下游分析。</div>
+    </a>
+    <a class="step-card" href="pca.html">
+      <div class="sc-num">STEP 05</div>
+      <span class="sc-icon">📉</span>
+      <div class="sc-title">PCA</div>
+      <div class="sc-desc">將高維基因表達資料壓縮成主要主成分，保留關鍵變異並降低雜訊。</div>
+    </a>
+    <a class="step-card" href="clustering.html">
+      <div class="sc-num">STEP 06</div>
+      <span class="sc-icon">🧩</span>
+      <div class="sc-title">Clustering</div>
+      <div class="sc-desc">依據 PCA 空間中的近鄰關係建立圖網路，辨識細胞族群與亞群。</div>
+    </a>
+    <a class="step-card" href="umap.html">
+      <div class="sc-num">STEP 07</div>
+      <span class="sc-icon">🗺️</span>
+      <div class="sc-title">UMAP</div>
+      <div class="sc-desc">將高維資料投影到 2D 空間，便於觀察細胞群間的相對關係與分布。</div>
+    </a>
+    <a class="step-card" href="annotation.html">
+      <div class="sc-num">STEP 08</div>
+      <span class="sc-icon">🏷️</span>
+      <div class="sc-title">Cell Annotation</div>
+      <div class="sc-desc">根據 marker genes 與生物學背景，為 cluster 指定細胞類型名稱。</div>
+    </a>
+    <a class="step-card" href="differential-expression.html">
+      <div class="sc-num">STEP 09</div>
+      <span class="sc-icon">🧾</span>
+      <div class="sc-title">Differential Expression</div>
+      <div class="sc-desc">比較不同 cluster 或 condition 的基因表達差異，找出 markers 與疾病訊號。</div>
+    </a>
+    <a class="step-card" href="integration.html">
+      <div class="sc-adv">ADVANCED</div>
+      <div class="sc-num">ADV</div>
+      <span class="sc-icon">🔗</span>
+      <div class="sc-title">Integration</div>
+      <div class="sc-desc">整合多樣本或多批次資料，降低 batch effect 並保留真實生物學差異。</div>
+    </a>
+    <a class="step-card" href="cellchat.html">
+      <div class="sc-adv">ADVANCED</div>
+      <div class="sc-num">ADV</div>
+      <span class="sc-icon">💬</span>
+      <div class="sc-title">Cell-Cell Communication</div>
+      <div class="sc-desc">分析 ligand-receptor interactions，探索細胞間訊號傳遞與微環境調控。</div>
+    </a>
+    <a class="step-card" href="trajectory.html">
+      <div class="sc-adv">ADVANCED</div>
+      <div class="sc-num">ADV</div>
+      <span class="sc-icon">🛤️</span>
+      <div class="sc-title">Trajectory / Pseudotime</div>
+      <div class="sc-desc">推估細胞狀態轉變與發育路徑，適合研究 differentiation 或 disease progression。</div>
+    </a>
+  </div>
+</section>
+
+<footer>© Charlene — scRNA-seq Interactive Tutorial Hub · Built with ❤️ for bioinformaticians</footer>
+<script src="shared.js"></script>
+</body>
+</html>
