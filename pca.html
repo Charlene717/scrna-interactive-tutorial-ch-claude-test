@@ -1,159 +1,57 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 5: 主成分分析 (PCA) — scRNA-seq 教學</title>
-  <meta name="description" content="了解 PCA 在 scRNA-seq 中的角色：降維去噪、Elbow Plot 判斷主成分數量，搭配互動模擬與程式碼。">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Step 5: PCA — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
 <body>
-<nav class="top-nav"><div class="top-nav-inner">
-  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
-  <ul class="top-nav-links">
-    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li>
-    <li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li>
-    <li><a href="pca.html" class="active">PCA</a></li><li><a href="clustering.html">Clustering</a></li>
-    <li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li>
-    <li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li>
-    <li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li>
-  </ul>
-</div></nav>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html" class="active">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
 <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-
-<header class="page-hero">
-  <div class="step-badge">STEP 5 / 9</div>
-  <h1>主成分分析 (PCA)</h1>
-  <p class="subtitle">將數千個基因維度壓縮為數十個主成分，保留關鍵生物學訊號、過濾隨機噪音。</p>
-</header>
-
+<header class="page-hero"><div class="step-badge">STEP 5 / 9</div><h1>主成分分析 (PCA)</h1><p class="subtitle">將數千維壓縮為數十個主成分，保留訊號、過濾噪音。</p></header>
 <main class="content-wrap">
-
-  <section class="section">
-    <div class="section-label">核心概念</div>
-    <h2>PCA 的角色</h2>
-    <p>即使只使用 2000 個 HVGs，數據仍然是 2000 維的——這對聚類和視覺化來說太高了（<span class="term">維度災難<span class="term-tip">Curse of Dimensionality：高維空間中，距離計算變得不可靠，點與點之間的距離趨於相同</span></span>）。PCA 找出數據中方差最大的方向（主成分），用前 N 個主成分就能捕捉絕大部分的真實訊號，而後面的主成分多半是噪音。</p>
-
+  <section class="section"><div class="section-label">核心概念</div><h2>PCA 的角色</h2>
+    <p>即使只用 2000 HVGs，仍是 2000 維——PCA 找出方差最大的方向（主成分），用前 N 個就能捕捉絕大部分訊號。</p>
     <div class="card-grid cols-3">
-      <div class="card"><div class="card-icon">🗜️</div><h4>降維</h4><p>從 ~2000 維壓縮到 10–50 維。</p></div>
-      <div class="card"><div class="card-icon">🧹</div><h4>去噪</h4><p>丟棄低方差的主成分，等同過濾噪音。</p></div>
-      <div class="card"><div class="card-icon">⚡</div><h4>加速</h4><p>降維後的聚類、UMAP 計算速度大幅提升。</p></div>
+      <div class="card"><div class="card-icon">🗜️</div><h4>降維</h4><p>~2000 維 → 10–50 維</p></div>
+      <div class="card"><div class="card-icon">🧹</div><h4>去噪</h4><p>丟棄低方差主成分</p></div>
+      <div class="card"><div class="card-icon">⚡</div><h4>加速</h4><p>後續計算大幅提升</p></div>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-label">互動模擬</div>
-    <h2>Elbow Plot：選擇多少個主成分？</h2>
-    <p>Elbow Plot 顯示每個主成分解釋的方差比例。你需要找到「手肘」——曲線開始趨平的位置，在此之後的主成分貢獻微小。拖動滑桿設定你的選擇。</p>
-
+  <section class="section"><div class="section-label">互動模擬</div><h2>Elbow Plot：選擇多少個主成分？</h2>
+    <p>拖動滑桿設定你的選擇，觀察捕捉的方差比例變化。</p>
     <div class="interactive-panel">
-      <div class="slider-group">
-        <label>選擇主成分數 (nPCs) <span id="valPC">15</span></label>
-        <input type="range" id="sliderPC" min="5" max="50" value="15" step="1">
-      </div>
+      <div class="slider-group"><label>選擇主成分數 (nPCs) <span id="valPC">15</span></label><input type="range" id="sliderPC" min="5" max="50" value="15" step="1"></div>
       <div id="pcDesc" style="font-size:0.88rem;color:var(--c-ink-light);margin-bottom:8px;"></div>
       <div class="chart-container" style="height:300px;"><canvas id="elbowChart"></canvas></div>
     </div>
-
-    <div class="decision-tree">
-      <h4>🌳 如何決定 nPCs？</h4>
-      <div class="dt-node"><span class="dt-q">方法1:</span><div><strong>Elbow Plot</strong> — 選在曲線趨平處，通常 10–20。</div></div>
-      <div class="dt-node"><span class="dt-q">方法2:</span><div><strong>JackStraw test</strong> — 統計檢定每個 PC 的顯著性（計算較慢）。</div></div>
-      <div class="dt-node"><span class="dt-q">經驗值:</span><div>大多數情況 <strong>15–30</strong> 即足夠。稍微選多一些比選少安全（寧可包含一點噪音，也不要遺漏訊號）。</div></div>
-    </div>
   </section>
 
-  <section class="section">
-    <div class="section-label">程式碼</div>
-    <h2>實作範例</h2>
-    <div class="code-tabs">
-      <div class="code-tab-btns">
-        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button>
-        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button>
-      </div>
-      <div class="code-tab-content active" id="r1"><pre><span class="comment"># 執行 PCA</span>
-pbmc &lt;- <span class="func">RunPCA</span>(pbmc, features = <span class="func">VariableFeatures</span>(pbmc))
-
-<span class="comment"># 視覺化前兩個主成分</span>
-<span class="func">DimPlot</span>(pbmc, reduction = <span class="str">"pca"</span>)
-
-<span class="comment"># Elbow Plot 決定 nPCs</span>
+  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
+    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+      <div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">RunPCA</span>(pbmc, features = <span class="func">VariableFeatures</span>(pbmc))
 <span class="func">ElbowPlot</span>(pbmc, ndims = <span class="num">50</span>)
-
-<span class="comment"># 可選：JackStraw 統計檢定</span>
-pbmc &lt;- <span class="func">JackStraw</span>(pbmc, num.replicate = <span class="num">100</span>)
-pbmc &lt;- <span class="func">ScoreJackStraw</span>(pbmc, dims = <span class="num">1</span>:<span class="num">30</span>)
-<span class="func">JackStrawPlot</span>(pbmc, dims = <span class="num">1</span>:<span class="num">30</span>)</pre></div>
-      <div class="code-tab-content" id="py1"><pre><span class="comment"># 執行 PCA</span>
-sc.tl.pca(adata, n_comps=<span class="num">50</span>)
-
-<span class="comment"># 視覺化</span>
-sc.pl.pca(adata)
-
-<span class="comment"># Elbow Plot（方差比例圖）</span>
+<span class="comment"># 可選：JackStraw 檢定</span>
+pbmc &lt;- <span class="func">JackStraw</span>(pbmc, num.replicate = <span class="num">100</span>)</pre></div>
+      <div class="code-tab-content" id="py1"><pre>sc.tl.pca(adata, n_comps=<span class="num">50</span>)
 sc.pl.pca_variance_ratio(adata, n_pcs=<span class="num">50</span>)</pre></div>
     </div>
   </section>
-
-  <section class="quiz-section">
-    <h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="1">
-      <p>1. 在 scRNA-seq 分析中，PCA 主要作用於哪個方向的降維？</p>
-      <div class="quiz-options">
-        <div class="quiz-opt" data-idx="0">A. 減少細胞數量（行）</div>
-        <div class="quiz-opt" data-idx="1">B. 減少基因維度（列），從數千維壓縮到數十維</div>
-        <div class="quiz-opt" data-idx="2">C. 將數據降到 2D 以便視覺化</div>
-        <div class="quiz-opt" data-idx="3">D. 移除批次效應</div>
-      </div>
-      <div class="quiz-feedback" id="fb1"></div>
-    </div>
+  <section class="quiz-section"><h3>📝 自我檢測</h3>
+    <div class="quiz-q" data-answer="1"><p>PCA 主要壓縮哪個方向的維度？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. 減少細胞數量</div><div class="quiz-opt" data-idx="1">B. 壓縮基因維度（列）</div><div class="quiz-opt" data-idx="2">C. 降到 2D 視覺化</div><div class="quiz-opt" data-idx="3">D. 移除批次效應</div></div><div class="quiz-feedback" id="fb1"></div></div>
   </section>
-
-  <nav class="page-nav">
-    <a href="scaling.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 4：Scaling</span></a>
-    <a href="clustering.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 6：聚類</span></a>
-  </nav>
+  <nav class="page-nav"><a href="scaling.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 4：Scaling</span></a><a href="clustering.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 6：聚類</span></a></nav>
 </main>
 <footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
 <script>
-window.addEventListener('scroll', () => { const h = document.documentElement; document.getElementById('progressBar').style.width = (h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%'; });
-function switchTab(btn, id) { const p = btn.closest('.code-tabs'); p.querySelectorAll('.code-tab-btn').forEach(b=>b.classList.remove('active')); p.querySelectorAll('.code-tab-content').forEach(c=>c.classList.remove('active')); btn.classList.add('active'); document.getElementById(id).classList.add('active'); }
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
 
-// Elbow Plot
-const varExplained = [];
-let v = 12;
-for (let i = 1; i <= 50; i++) { varExplained.push(v); v *= (0.82 + Math.random()*0.08); }
-const elbowCtx = document.getElementById('elbowChart').getContext('2d');
-let elbowChart;
-function renderElbow() {
-  const n = +document.getElementById('sliderPC').value;
-  document.getElementById('valPC').textContent = n;
-  const totalVar = varExplained.reduce((a,b)=>a+b,0);
-  const captured = varExplained.slice(0,n).reduce((a,b)=>a+b,0);
-  document.getElementById('pcDesc').innerHTML = `選擇前 <strong>${n}</strong> 個主成分，約捕捉 <strong>${(captured/totalVar*100).toFixed(1)}%</strong> 的總方差。`;
-  const colors = varExplained.map((_,i) => i < n ? 'rgba(26,107,90,0.7)' : 'rgba(200,195,185,0.5)');
-  if (elbowChart) elbowChart.destroy();
-  elbowChart = new Chart(elbowCtx, {
-    type: 'bar',
-    data: { labels: varExplained.map((_,i)=>'PC'+(i+1)), datasets: [{ data: varExplained, backgroundColor: colors, borderRadius: 2 }] },
-    options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } },
-      scales: { x: { title: { display: true, text: '主成分' }, ticks: { maxTicksLimit: 15 } }, y: { title: { display: true, text: '方差解釋量 (%)' } } } }
-  });
-}
-document.getElementById('sliderPC').addEventListener('input', renderElbow);
-renderElbow();
+const varExp=[];let v=12;for(let i=0;i<50;i++){varExp.push(v);v*=(0.82+Math.random()*0.08);}
+const totalVar=varExp.reduce((a,b)=>a+b,0);
 
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{
-  const answer=+q.dataset.answer;
-  q.querySelectorAll('.quiz-opt').forEach(opt=>{
-    opt.addEventListener('click',()=>{
-      if(q.classList.contains('answered'))return; q.classList.add('answered');
-      const fb=document.getElementById('fb'+(qi+1));
-      if(+opt.dataset.idx===answer){opt.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ 正確！PCA 壓縮的是基因維度（特徵），而非細胞數量。2D 視覺化是 UMAP/t-SNE 的工作。';}
-      else{opt.classList.add('wrong');q.querySelectorAll('.quiz-opt')[answer].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 B。PCA 作用於特徵（基因）維度的壓縮。';}
-    });
-  });
-});
+const elbowChart=new Chart(document.getElementById('elbowChart'),{type:'bar',data:{labels:varExp.map((_,i)=>'PC'+(i+1)),datasets:[{data:varExp,backgroundColor:varExp.map(()=>'rgba(200,195,185,0.5)'),borderRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'主成分'},ticks:{maxTicksLimit:15}},y:{title:{display:true,text:'方差解釋量 (%)'}}}}});
+
+function updateElbow(){const n=+document.getElementById('sliderPC').value;document.getElementById('valPC').textContent=n;const cap=varExp.slice(0,n).reduce((a,b)=>a+b,0);document.getElementById('pcDesc').innerHTML='前 <strong>'+n+'</strong> 個 PC 捕捉約 <strong>'+(cap/totalVar*100).toFixed(1)+'%</strong> 總方差。';elbowChart.data.datasets[0].backgroundColor=varExp.map((_,i)=>i<n?'rgba(26,107,90,0.7)':'rgba(200,195,185,0.5)');elbowChart.update('none');}
+document.getElementById('sliderPC').addEventListener('input',updateElbow);updateElbow();
+
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ PCA 壓縮的是基因（特徵）維度。2D 是 UMAP 的工作。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 B。';}});});});
 </script>
-</body>
-</html>
+</body></html>

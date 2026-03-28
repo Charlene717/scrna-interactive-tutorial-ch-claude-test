@@ -1,142 +1,53 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 4: 縮放 (Scaling) — scRNA-seq 教學</title>
-  <meta name="description" content="了解 scRNA-seq 中 Z-score 縮放的目的：讓每個基因在相近的尺度下進入 PCA，避免高表達基因主導分析結果。">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Step 4: 縮放 (Scaling) — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
 <body>
-<nav class="top-nav"><div class="top-nav-inner">
-  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
-  <ul class="top-nav-links">
-    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li>
-    <li><a href="variable-features.html">Features</a></li><li><a href="scaling.html" class="active">Scaling</a></li>
-    <li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li>
-    <li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li>
-    <li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li>
-    <li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li>
-  </ul>
-</div></nav>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html" class="active">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
 <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-
-<header class="page-hero">
-  <div class="step-badge">STEP 4 / 9</div>
-  <h1>縮放 (Scaling)</h1>
-  <p class="subtitle">對基因進行 Z-score 轉換，讓每個基因在 PCA 中擁有平等的「發言權」。</p>
-</header>
-
+<header class="page-hero"><div class="step-badge">STEP 4 / 9</div><h1>縮放 (Scaling)</h1><p class="subtitle">Z-score 轉換讓每個基因在 PCA 中擁有平等的發言權。</p></header>
 <main class="content-wrap">
-
-  <section class="section">
-    <div class="section-label">核心概念</div>
-    <h2>Scaling 在做什麼？</h2>
-    <p>經過 Normalization 後，不同基因的表達值範圍仍然差異極大——例如某些高表達的結構蛋白基因的數值可能是低表達轉錄因子的數百倍。如果直接將這些數據送入 PCA，主成分將完全被高表達基因主導，低表達但具有生物學意義的基因則被淹沒。</p>
-    <p><strong>Scaling 的解法：</strong>對每個基因執行 Z-score 標準化——減去平均值、除以標準差。這樣每個基因的均值為 0、方差為 1，不論原始表達高低，都在同一個尺度上競爭。</p>
-
+  <section class="section"><div class="section-label">核心概念</div><h2>Scaling 在做什麼？</h2>
+    <p>Normalization 後不同基因的值域仍差異極大。Scaling 對每個基因執行 Z-score：減去平均值、除以標準差，讓均值為 0、方差為 1。</p>
     <div class="card-grid cols-2">
-      <div class="card">
-        <h4>📐 數學公式</h4>
-        <p style="font-family:var(--font-mono);font-size:0.9rem;text-align:center;padding:12px 0;">z = (x − μ) / σ</p>
-        <p>x = 某細胞中某基因的表達值<br>μ = 該基因在所有細胞的平均值<br>σ = 該基因在所有細胞的標準差</p>
-      </div>
-      <div class="card">
-        <h4>⚠️ 與 Normalization 的差異</h4>
-        <p><strong>Normalization</strong> 是「跨基因」操作——校正每個<em>細胞</em>的定序深度。<br><strong>Scaling</strong> 是「跨細胞」操作——讓每個<em>基因</em>在相近尺度上。兩者互補，不可混淆。</p>
-      </div>
+      <div class="card"><h4>📐 公式</h4><p style="font-family:var(--font-mono);text-align:center;padding:8px;">z = (x − μ) / σ</p></div>
+      <div class="card"><h4>⚠️ 與 Normalization 的差異</h4><p><strong>Normalization</strong> 校正每個<em>細胞</em>的深度；<strong>Scaling</strong> 讓每個<em>基因</em>在相近尺度。</p></div>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-label">互動模擬</div>
-    <h2>Scaling 前後的比較</h2>
+  <section class="section"><div class="section-label">互動模擬</div><h2>Scaling 前後的比較</h2>
     <div class="interactive-panel">
       <div style="display:flex;gap:8px;margin-bottom:16px;">
-        <button class="code-tab-btn active" onclick="showScale(this,'before')" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 16px;">Scaling 前</button>
-        <button class="code-tab-btn" onclick="showScale(this,'after')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 16px;">Scaling 後</button>
+        <button class="code-tab-btn" id="btn-before" onclick="showScale('before')" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 16px;">Scaling 前</button>
+        <button class="code-tab-btn" id="btn-after" onclick="showScale('after')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 16px;">Scaling 後</button>
       </div>
-      <div id="scaleDesc" style="font-size:0.92rem;color:var(--c-ink-light);margin-bottom:12px;">
-        <strong>Scaling 前：</strong>高表達基因（如 MALAT1）主導整體方差，低表達基因的訊號被壓縮。
-      </div>
+      <div id="scaleDesc" style="font-size:0.92rem;color:var(--c-ink-light);margin-bottom:12px;"><strong>Scaling 前：</strong>高表達基因主導方差。</div>
       <div class="chart-container" style="height:280px;"><canvas id="scaleChart"></canvas></div>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-label">進階說明</div>
-    <h2>可選：回歸技術變數</h2>
-    <p>在 Scaling 步驟中，可以額外「回歸掉」（regress out）某些不想要的變異來源，例如粒線體比例、細胞週期分數、或定序批次。這通常透過在 Z-score 之前，先用線性模型移除這些變數的效應。</p>
-    <div class="callout warn">
-      <span class="callout-icon">⚠️</span>
-      <div><strong>謹慎使用 regress out。</strong>過度回歸可能移除真正的生物學訊號。例如，若你研究的正是細胞週期相關的生物學問題，就不應該回歸掉細胞週期分數。只回歸你確定是純技術噪音的變數。</div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-label">程式碼</div>
-    <h2>實作範例</h2>
-    <div class="code-tabs">
-      <div class="code-tab-btns">
-        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button>
-        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button>
-      </div>
-      <div class="code-tab-content active" id="r1"><pre><span class="comment"># 基本 Scaling（對所有基因或只對 HVGs）</span>
-pbmc &lt;- <span class="func">ScaleData</span>(pbmc)
-
-<span class="comment"># 進階：回歸掉 MT% 與細胞週期</span>
-pbmc &lt;- <span class="func">ScaleData</span>(pbmc, vars.to.regress = <span class="func">c</span>(<span class="str">"percent.mt"</span>, <span class="str">"S.Score"</span>, <span class="str">"G2M.Score"</span>))
-
-<span class="comment"># 注意：若使用 SCTransform，此步驟已自動完成</span></pre></div>
-      <div class="code-tab-content" id="py1"><pre><span class="comment"># 基本 Scaling</span>
-sc.pp.scale(adata, max_value=<span class="num">10</span>)
-
-<span class="comment"># 進階：回歸掉技術變數</span>
+  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
+    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+      <div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">ScaleData</span>(pbmc)
+<span class="comment"># 進階：回歸 MT%</span>
+pbmc &lt;- <span class="func">ScaleData</span>(pbmc, vars.to.regress = <span class="func">c</span>(<span class="str">"percent.mt"</span>))</pre></div>
+      <div class="code-tab-content" id="py1"><pre>sc.pp.scale(adata, max_value=<span class="num">10</span>)
+<span class="comment"># 進階：回歸技術變數</span>
 sc.pp.regress_out(adata, [<span class="str">"pct_counts_mt"</span>])
 sc.pp.scale(adata, max_value=<span class="num">10</span>)</pre></div>
     </div>
-    <div class="callout tip">
-      <span class="callout-icon">💡</span>
-      <div><strong>SCTransform 使用者注意：</strong>如果前面已使用 SCTransform，它的輸出（Pearson residuals）已經等同完成了 Normalization + Feature Selection + Scaling，可以直接跳到 PCA。</div>
-    </div>
+    <div class="callout tip"><span class="callout-icon">💡</span><div><strong>SCTransform 使用者注意：</strong>它的輸出已包含 Normalization + Feature Selection + Scaling，可直接跳到 PCA。</div></div>
   </section>
-
-  <nav class="page-nav">
-    <a href="variable-features.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 3：高變異基因選擇</span></a>
-    <a href="pca.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 5：PCA</span></a>
-  </nav>
+  <nav class="page-nav"><a href="variable-features.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 3：高變異基因</span></a><a href="pca.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 5：PCA</span></a></nav>
 </main>
 <footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
 <script>
-window.addEventListener('scroll', () => {
-  const h = document.documentElement;
-  document.getElementById('progressBar').style.width = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100 + '%';
-});
-function switchTab(btn, id) {
-  const p = btn.closest('.code-tabs');
-  p.querySelectorAll('.code-tab-btn').forEach(b => b.classList.remove('active'));
-  p.querySelectorAll('.code-tab-content').forEach(c => c.classList.remove('active'));
-  btn.classList.add('active'); document.getElementById(id).classList.add('active');
-}
-const scaleCtx = document.getElementById('scaleChart').getContext('2d');
-let scaleChart;
-const scaleData = {
-  before: { labels: ['MALAT1','FTL','RPL13','CD3D','IL7R','GZMB','FOXP3','BCL11B'], data: [8.2,6.1,5.5,2.8,1.9,0.8,0.3,0.1], color: 'rgba(192,57,43,0.6)', desc: '<strong>Scaling 前：</strong>高表達基因（如 MALAT1）主導整體方差，低表達基因的訊號被壓縮。' },
-  after: { labels: ['MALAT1','FTL','RPL13','CD3D','IL7R','GZMB','FOXP3','BCL11B'], data: [1.8,1.2,0.9,0.4,-0.2,-0.8,-1.3,-1.8], color: 'rgba(26,107,90,0.6)', desc: '<strong>Scaling 後：</strong>所有基因被拉到相近的尺度（均值 0、方差 1），低表達基因的訊號得以保留。' }
-};
-function showScale(btn, key) {
-  btn.parentElement.querySelectorAll('button').forEach(b => { b.style.background = 'var(--c-bg-alt)'; b.style.color = 'var(--c-ink)'; });
-  btn.style.background = 'var(--c-accent)'; btn.style.color = '#fff';
-  const d = scaleData[key];
-  document.getElementById('scaleDesc').innerHTML = d.desc;
-  if (scaleChart) scaleChart.destroy();
-  scaleChart = new Chart(scaleCtx, {
-    type: 'bar', data: { labels: d.labels, datasets: [{ data: d.data, backgroundColor: d.color, borderRadius: 4 }] },
-    options: { responsive: true, maintainAspectRatio: false, indexAxis: 'y', plugins: { legend: { display: false } },
-      scales: { x: { title: { display: true, text: '表達值' } } } }
-  });
-}
-showScale(document.querySelector('.interactive-panel button'), 'before');
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+
+const sd={before:{labels:['MALAT1','FTL','RPL13','CD3D','IL7R','GZMB','FOXP3','BCL11B'],data:[8.2,6.1,5.5,2.8,1.9,0.8,0.3,0.1],color:'rgba(192,57,43,0.6)',desc:'<strong>Scaling 前：</strong>高表達基因主導方差，低表達基因被壓縮。'},after:{labels:['MALAT1','FTL','RPL13','CD3D','IL7R','GZMB','FOXP3','BCL11B'],data:[1.8,1.2,0.9,0.4,-0.2,-0.8,-1.3,-1.8],color:'rgba(26,107,90,0.6)',desc:'<strong>Scaling 後：</strong>所有基因在相近尺度（均值 0、方差 1）。'}};
+
+const scaleChart=new Chart(document.getElementById('scaleChart'),{type:'bar',data:{labels:sd.before.labels,datasets:[{data:sd.before.data,backgroundColor:sd.before.color,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'表達值'}}}}});
+
+function showScale(key){['before','after'].forEach(k=>{const b=document.getElementById('btn-'+k);b.style.background=k===key?'var(--c-accent)':'var(--c-bg-alt)';b.style.color=k===key?'#fff':'var(--c-ink)';});const d=sd[key];document.getElementById('scaleDesc').innerHTML=d.desc;scaleChart.data.labels=d.labels;scaleChart.data.datasets[0].data=d.data;scaleChart.data.datasets[0].backgroundColor=d.color;scaleChart.update('none');}
 </script>
-</body>
-</html>
+</body></html>

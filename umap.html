@@ -1,142 +1,73 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 7: UMAP 視覺化 — scRNA-seq 教學</title>
-  <meta name="description" content="UMAP 與 t-SNE 比較、常見誤讀、參數調整，搭配互動模擬與 Seurat/Scanpy 程式碼。">
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Step 7: UMAP — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
 <body>
-<nav class="top-nav"><div class="top-nav-inner">
-  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
-  <ul class="top-nav-links">
-    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html" class="active">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li>
-  </ul>
-</div></nav>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html" class="active">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
 <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-
-<header class="page-hero">
-  <div class="step-badge">STEP 7 / 9</div>
-  <h1>UMAP 視覺化</h1>
-  <p class="subtitle">將高維數據投影到 2D 平面，直觀觀察細胞群間的相對關係——但千萬別過度解讀。</p>
-</header>
-
+<header class="page-hero"><div class="step-badge">STEP 7 / 9</div><h1>UMAP 視覺化</h1><p class="subtitle">將高維數據投影到 2D——但千萬別過度解讀距離。</p></header>
 <main class="content-wrap">
-  <section class="section">
-    <div class="section-label">核心概念</div>
-    <h2>UMAP 是什麼？</h2>
-    <p><span class="term">UMAP<span class="term-tip">Uniform Manifold Approximation and Projection：一種非線性降維方法，將高維拓撲結構近似投影到低維空間</span></span>將 PCA 空間中的細胞關係投影到 2D 平面上。它<strong>不是</strong>分析的核心步驟（聚類是在 PCA 空間中完成的），而是一個<strong>視覺化工具</strong>，幫助我們「看到」分群結果。</p>
-
-    <div class="callout danger">
-      <span class="callout-icon">🚨</span>
-      <div><strong>常見誤讀警告：</strong>UMAP 圖上群體間的距離<strong>不代表</strong>生物學相似度；群體的大小也<strong>不代表</strong>細胞數量。這些都是投影的副產品，不應用於生物學推論。</div>
-    </div>
+  <section class="section"><div class="section-label">核心概念</div><h2>UMAP 是什麼？</h2>
+    <p>UMAP 是<strong>視覺化工具</strong>，不是分析核心（聚類在 PCA 空間完成）。</p>
+    <div class="callout danger"><span class="callout-icon">🚨</span><div><strong>常見誤讀：</strong>UMAP 群體間距離<strong>不代表</strong>生物學相似度；群體大小<strong>不代表</strong>細胞數量。</div></div>
   </section>
 
-  <section class="section">
-    <div class="section-label">方法比較</div>
-    <h2>UMAP vs t-SNE</h2>
-    <table class="comp-table">
-      <thead><tr><th></th><th>UMAP（推薦）</th><th>t-SNE</th></tr></thead>
-      <tbody>
-        <tr><td><strong>速度</strong></td><td>較快</td><td>較慢（尤其大數據集）</td></tr>
-        <tr><td><strong>全局結構</strong></td><td>較好地保留群體間相對位置</td><td>主要保留局部結構</td></tr>
-        <tr><td><strong>可重複性</strong></td><td>設固定 seed 即可重現</td><td>結果較不穩定</td></tr>
-        <tr><td><strong>目前地位</strong></td><td>scRNA-seq 的標準選擇</td><td>仍有使用但逐漸被取代</td></tr>
-      </tbody>
-    </table>
-  </section>
-
-  <section class="section">
-    <div class="section-label">互動模擬</div>
-    <h2>n_neighbors 參數的影響</h2>
-    <p><code>n_neighbors</code> 控制 UMAP 在保留局部 vs 全局結構之間的平衡。低值強調局部細節，高值產生更連續的投影。</p>
+  <section class="section"><div class="section-label">互動模擬</div><h2>min_dist 參數的影響</h2>
+    <p><code>min_dist</code> 控制點之間的最小距離。低值讓群體更緊密，高值更分散。</p>
     <div class="interactive-panel">
-      <div class="slider-group">
-        <label>n_neighbors <span id="valNN">15</span></label>
-        <input type="range" id="sliderNN" min="5" max="50" value="15" step="5">
-      </div>
-      <div id="nnDesc" style="font-size:0.88rem;color:var(--c-ink-light);margin-bottom:8px;"></div>
+      <div class="slider-group"><label>min_dist <span id="valMD">0.3</span></label><input type="range" id="sliderMD" min="1" max="10" value="3" step="1"></div>
+      <div id="mdDesc" style="font-size:0.88rem;color:var(--c-ink-light);margin-bottom:8px;"></div>
       <div class="chart-container" style="height:340px;"><canvas id="umapChart"></canvas></div>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-label">程式碼</div>
-    <h2>實作範例</h2>
-    <div class="code-tabs">
-      <div class="code-tab-btns">
-        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button>
-        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button>
-      </div>
-      <div class="code-tab-content active" id="r1"><pre><span class="comment"># 執行 UMAP</span>
-pbmc &lt;- <span class="func">RunUMAP</span>(pbmc, dims = <span class="num">1</span>:<span class="num">15</span>)
+  <section class="section"><div class="section-label">方法比較</div><h2>UMAP vs t-SNE</h2>
+    <table class="comp-table"><thead><tr><th></th><th>UMAP（推薦）</th><th>t-SNE</th></tr></thead><tbody>
+      <tr><td><strong>速度</strong></td><td>較快</td><td>較慢</td></tr>
+      <tr><td><strong>全局結構</strong></td><td>較好保留</td><td>主要保留局部</td></tr>
+      <tr><td><strong>目前地位</strong></td><td>標準選擇</td><td>逐漸被取代</td></tr>
+    </tbody></table>
+  </section>
 
-<span class="comment"># 視覺化（以 cluster 著色）</span>
+  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
+    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+      <div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">RunUMAP</span>(pbmc, dims = <span class="num">1</span>:<span class="num">15</span>)
 <span class="func">DimPlot</span>(pbmc, reduction = <span class="str">"umap"</span>, label = <span class="kw">TRUE</span>)
-
-<span class="comment"># 視覺化特定基因的表達</span>
-<span class="func">FeaturePlot</span>(pbmc, features = <span class="func">c</span>(<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>, <span class="str">"CD14"</span>))</pre></div>
-      <div class="code-tab-content" id="py1"><pre><span class="comment"># 執行 UMAP</span>
-sc.tl.umap(adata)
-
-<span class="comment"># 視覺化</span>
+<span class="func">FeaturePlot</span>(pbmc, features = <span class="func">c</span>(<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>))</pre></div>
+      <div class="code-tab-content" id="py1"><pre>sc.tl.umap(adata)
 sc.pl.umap(adata, color=[<span class="str">"leiden"</span>])
-
-<span class="comment"># 特定基因</span>
-sc.pl.umap(adata, color=[<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>, <span class="str">"CD14"</span>])</pre></div>
+sc.pl.umap(adata, color=[<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>])</pre></div>
     </div>
   </section>
-
-  <section class="quiz-section">
-    <h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="2">
-      <p>1. 在 UMAP 圖上，兩個 cluster 距離很近，這代表？</p>
-      <div class="quiz-options">
-        <div class="quiz-opt" data-idx="0">A. 這兩種細胞在生物學上非常相似</div>
-        <div class="quiz-opt" data-idx="1">B. 這兩種細胞共享大量 marker 基因</div>
-        <div class="quiz-opt" data-idx="2">C. 不一定有生物學意義——UMAP 距離不能直接解讀為相似度</div>
-        <div class="quiz-opt" data-idx="3">D. 它們其實是同一種細胞，應該合併</div>
-      </div>
-      <div class="quiz-feedback" id="fb1"></div>
-    </div>
+  <section class="quiz-section"><h3>📝 自我檢測</h3>
+    <div class="quiz-q" data-answer="2"><p>UMAP 上兩個 cluster 距離很近代表？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. 生物學上很相似</div><div class="quiz-opt" data-idx="1">B. 共享大量 markers</div><div class="quiz-opt" data-idx="2">C. 不一定——UMAP 距離不能直接解讀為相似度</div><div class="quiz-opt" data-idx="3">D. 應該合併</div></div><div class="quiz-feedback" id="fb1"></div></div>
   </section>
-
-  <nav class="page-nav">
-    <a href="clustering.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 6：聚類</span></a>
-    <a href="annotation.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 8：細胞註釋</span></a>
-  </nav>
+  <nav class="page-nav"><a href="clustering.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 6：聚類</span></a><a href="annotation.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 8：Annotation</span></a></nav>
 </main>
 <footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
 <script>
 window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
-function switchTab(btn,id){const p=btn.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(b=>b.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
 
-// UMAP sim
-function genUMAP(nn) {
-  const spread = nn < 15 ? 1.6 : nn < 30 ? 1.2 : 0.8;
-  const centers = [{x:-5,y:3},{x:-3,y:-4},{x:4,y:2},{x:5,y:-3},{x:0,y:6}];
-  const colors = ['#1a6b5a','#c0392b','#2980b9','#d4a03c','#8e44ad'];
-  return centers.map((c,i)=>{
-    const pts = [];
-    for(let j=0;j<100;j++) pts.push({x:c.x+(Math.random()-0.5)*spread*4, y:c.y+(Math.random()-0.5)*spread*4});
-    return {label:'Cluster '+i,data:pts,backgroundColor:colors[i]+'77',pointRadius:3};
-  });
-}
-const umCtx = document.getElementById('umapChart').getContext('2d');
-let umChart;
-function renderUMAP(){
-  const nn=+document.getElementById('sliderNN').value;
-  document.getElementById('valNN').textContent=nn;
-  document.getElementById('nnDesc').innerHTML = nn<=10?'<strong>低 n_neighbors：</strong>強調局部結構，群體更分散、碎片化。':nn<=25?'<strong>中 n_neighbors：</strong>局部與全局的平衡，是預設值。':'<strong>高 n_neighbors：</strong>強調全局結構，群體更連續、緊湊。';
-  if(umChart)umChart.destroy();
-  umChart=new Chart(umCtx,{type:'scatter',data:{datasets:genUMAP(nn)},options:{responsive:true,maintainAspectRatio:false,scales:{x:{title:{display:true,text:'UMAP 1'},min:-12,max:12},y:{title:{display:true,text:'UMAP 2'},min:-10,max:12}},plugins:{legend:{position:'right'}}}});
-}
-document.getElementById('sliderNN').addEventListener('input',renderUMAP);
-renderUMAP();
+// Stable base points per cluster
+const ctr=[{x:-5,y:3},{x:-3,y:-4},{x:4,y:2},{x:5,y:-3},{x:0,y:6}];
+const cols=['#1a6b5a','#c0392b','#2980b9','#d4a03c','#8e44ad'];
+const basePts=[];ctr.forEach((c,ci)=>{for(let j=0;j<100;j++){basePts.push({bx:c.x+(Math.random()-0.5)*1.2,by:c.y+(Math.random()-0.5)*1.2,ci});}});
 
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const answer=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(opt=>{opt.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+opt.dataset.idx===answer){opt.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ 正確！UMAP 是非線性投影，距離可能因投影方式而扭曲，不能直接解讀。';}else{opt.classList.add('wrong');q.querySelectorAll('.quiz-opt')[answer].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 C。UMAP 距離不等於生物學相似度。';}});});});
+const ds=ctr.map((_,i)=>({label:'Cluster '+i,data:[],backgroundColor:cols[i]+'77',pointRadius:3}));
+const umChart=new Chart(document.getElementById('umapChart'),{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{title:{display:true,text:'UMAP 1'},min:-12,max:12},y:{title:{display:true,text:'UMAP 2'},min:-10,max:12}},plugins:{legend:{position:'right'}}}});
+
+function updateUMAP(){
+  const md=+document.getElementById('sliderMD').value/10;
+  document.getElementById('valMD').textContent=md.toFixed(1);
+  document.getElementById('mdDesc').innerHTML=md<=0.2?'<strong>低 min_dist：</strong>點緊密，群體結構清晰。':md<=0.5?'<strong>中 min_dist：</strong>平衡的呈現（預設）。':'<strong>高 min_dist：</strong>點分散，更連續。';
+  const spread=1+md*6;
+  const buckets=ctr.map(()=>[]);
+  basePts.forEach(p=>{buckets[p.ci].push({x:p.bx*spread,y:p.by*spread});});
+  buckets.forEach((b,i)=>{umChart.data.datasets[i].data=b;});
+  umChart.update('none');
+}
+document.getElementById('sliderMD').addEventListener('input',updateUMAP);updateUMAP();
+
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ UMAP 是非線性投影，距離可能因投影而扭曲。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 C。';}});});});
 </script>
-</body>
-</html>
+</body></html>

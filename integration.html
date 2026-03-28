@@ -1,134 +1,105 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>數據整合 (Integration) — scRNA-seq 教學</title>
-  <meta name="description" content="scRNA-seq 數據整合：Harmony、CCA/RPCA、scVI 方法比較與選擇，消除 batch effect。">
-  <link rel="stylesheet" href="styles.css">
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>數據整合 (Integration) — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
 <body>
-<nav class="top-nav"><div class="top-nav-inner">
-  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
-  <ul class="top-nav-links">
-    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html" class="active">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li>
-  </ul>
-</div></nav>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html" class="active">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
 <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-
-<header class="page-hero">
-  <div class="step-badge">ADVANCED</div>
-  <h1>數據整合 (Integration)</h1>
-  <p class="subtitle">合併多個樣本或批次的數據，消除技術性 batch effect，保留真實的生物學差異。</p>
-</header>
-
+<header class="page-hero"><div class="step-badge">ADVANCED</div><h1>數據整合 (Integration)</h1><p class="subtitle">合併多批次數據，消除技術性 batch effect，保留真實生物學差異。</p></header>
 <main class="content-wrap">
-
-  <section class="section">
-    <div class="section-label">核心概念</div>
-    <h2>什麼是批次效應？</h2>
-    <p>當你合併來自不同實驗批次、不同定序日期、不同實驗室的 scRNA-seq 數據時，聚類結果可能主要反映「樣本來源」而非「細胞類型」。這是因為每次實驗都有微小的系統性差異——試劑批號、操作手法、定序平台——這些<span class="term">批次效應 (Batch Effect)<span class="term-tip">與生物學無關的系統性技術差異，導致同一種細胞在不同批次中呈現不同的表達模式</span></span>會掩蓋真正的生物學訊號。</p>
-    <div class="callout tip">
-      <span class="callout-icon">💡</span>
-      <div><strong>判斷是否需要 Integration：</strong>如果你的 UMAP 上，細胞主要按「樣本」分群而非按「細胞類型」分群，就需要進行 Integration。</div>
-    </div>
+  <section class="section"><div class="section-label">核心概念</div><h2>什麼是批次效應？</h2>
+    <p>不同實驗批次的系統性差異（試劑、操作、平台）會讓聚類反映「樣本來源」而非「細胞類型」。</p>
+    <div class="callout tip"><span class="callout-icon">💡</span><div><strong>判斷標準：</strong>UMAP 上細胞主要按「樣本」而非「類型」分群 → 需要 Integration。</div></div>
   </section>
 
-  <section class="section">
-    <div class="section-label">方法比較</div>
-    <h2>主流整合方法</h2>
-    <table class="comp-table">
-      <thead><tr><th>方法</th><th>核心邏輯</th><th>速度</th><th>適用場景</th></tr></thead>
-      <tbody>
-        <tr><td><strong>Harmony</strong></td><td>在 PCA 空間中迭代校正</td><td>⚡ 極快</td><td>快速整合、大數據集；目前最常用</td></tr>
-        <tr><td><strong>CCA (Seurat v3)</strong></td><td>找跨批次共享的相關結構</td><td>🔵 中等</td><td>批次間細胞組成相似時</td></tr>
-        <tr><td><strong>RPCA (Seurat v5)</strong></td><td>互惠 PCA 投影</td><td>🔵 中等</td><td>批次間細胞組成差異較大時</td></tr>
-        <tr><td><strong>scVI</strong></td><td>變分自編碼器 (深度學習)</td><td>🐢 較慢（需 GPU）</td><td>超大數據集、複雜批次結構</td></tr>
-        <tr><td><strong>scanorama</strong></td><td>全景拼接演算法</td><td>🔵 中等</td><td>多批次、Python 生態系</td></tr>
-      </tbody>
-    </table>
-
-    <div class="decision-tree">
-      <h4>🌳 我該用哪種方法？</h4>
-      <div class="dt-node"><span class="dt-q">Q1:</span><div>初次嘗試 / 快速探索？ <span class="dt-arrow">→</span> <strong>Harmony</strong>，最快、效果穩健。</div></div>
-      <div class="dt-node"><span class="dt-q">Q2:</span><div>批次間的細胞組成差異大嗎？（如一個有腫瘤、另一個沒有）<span class="dt-arrow">→ 是 →</span> <strong>RPCA</strong>，避免強行對齊不存在於另一批次的細胞。</div></div>
-      <div class="dt-node"><span class="dt-q">Q3:</span><div>數據集超過 50 萬細胞？ <span class="dt-arrow">→</span> <strong>Harmony</strong>（最快）或 <strong>scVI</strong>（準確度可能更高，但需 GPU）。</div></div>
-      <div class="dt-node"><span class="dt-q">Q4:</span><div>批次結構很複雜（多中心、多時間點、多技術）？ <span class="dt-arrow">→</span> <strong>scVI</strong>，深度學習模型更能處理複雜的混雜因素。</div></div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-label">程式碼</div>
-    <h2>實作範例</h2>
-    <div class="code-tabs">
-      <div class="code-tab-btns">
-        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Harmony</button>
-        <button class="code-tab-btn" onclick="switchTab(this,'r2')">R / Seurat v5</button>
-        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / scVI</button>
+  <section class="section"><div class="section-label">互動模擬</div><h2>整合前後 UMAP 比較</h2>
+    <p>切換觀察整合前（按批次分群）與整合後（按細胞類型分群）的效果。可分別用批次或細胞類型著色。</p>
+    <div class="interactive-panel">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+        <button class="code-tab-btn" id="btn-before" onclick="showInteg('before')" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 16px;">整合前</button>
+        <button class="code-tab-btn" id="btn-after" onclick="showInteg('after')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 16px;">整合後</button>
       </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="code-tab-btn" id="btn-batch" onclick="colorBy('batch')" style="background:var(--c-highlight);color:#fff;border-radius:6px;padding:6px 12px;font-size:0.82rem;">按批次著色</button>
+        <button class="code-tab-btn" id="btn-type" onclick="colorBy('type')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:6px 12px;font-size:0.82rem;">按細胞類型著色</button>
+      </div>
+      <div id="integDesc" style="font-size:0.88rem;color:var(--c-ink-light);margin-bottom:8px;"></div>
+      <div class="chart-container" style="height:340px;"><canvas id="integChart"></canvas></div>
+    </div>
+  </section>
+
+  <section class="section"><div class="section-label">方法比較</div><h2>主流方法</h2>
+    <table class="comp-table"><thead><tr><th>方法</th><th>速度</th><th>適用</th></tr></thead><tbody>
+      <tr><td><strong>Harmony</strong></td><td>⚡ 極快</td><td>通用、大數據集</td></tr>
+      <tr><td><strong>RPCA</strong></td><td>🔵 中等</td><td>細胞組成差異大</td></tr>
+      <tr><td><strong>scVI</strong></td><td>🐢 需GPU</td><td>複雜批次結構</td></tr>
+    </tbody></table>
+    <div class="decision-tree"><h4>🌳 我該用哪種？</h4>
+      <div class="dt-node"><span class="dt-q">快速探索？</span><div><span class="dt-arrow">→</span> <strong>Harmony</strong>。</div></div>
+      <div class="dt-node"><span class="dt-q">組成差異大？</span><div><span class="dt-arrow">→</span> <strong>RPCA</strong>。</div></div>
+      <div class="dt-node"><span class="dt-q">>50 萬細胞？</span><div><span class="dt-arrow">→</span> Harmony 或 <strong>scVI</strong>。</div></div>
+    </div>
+  </section>
+
+  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
+    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Harmony</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / scVI</button></div>
       <div class="code-tab-content active" id="r1"><pre><span class="func">library</span>(harmony)
-
-<span class="comment"># 先正常做 NormalizeData → FindVariableFeatures → ScaleData → RunPCA</span>
-<span class="comment"># 然後在 PCA 空間中執行 Harmony</span>
 pbmc &lt;- <span class="func">RunHarmony</span>(pbmc, group.by.vars = <span class="str">"batch"</span>)
-
-<span class="comment"># 後續步驟使用 Harmony 校正後的 embedding</span>
 pbmc &lt;- <span class="func">FindNeighbors</span>(pbmc, reduction = <span class="str">"harmony"</span>, dims = <span class="num">1</span>:<span class="num">20</span>)
-pbmc &lt;- <span class="func">FindClusters</span>(pbmc, resolution = <span class="num">0.5</span>)
 pbmc &lt;- <span class="func">RunUMAP</span>(pbmc, reduction = <span class="str">"harmony"</span>, dims = <span class="num">1</span>:<span class="num">20</span>)</pre></div>
-      <div class="code-tab-content" id="r2"><pre><span class="comment"># Seurat v5 整合流程</span>
-<span class="comment"># 資料已包含多個 layers (每個批次一個 layer)</span>
-pbmc[["RNA"]] &lt;- <span class="func">split</span>(pbmc[["RNA"]], f = pbmc$batch)
-
-<span class="comment"># 選擇整合方法</span>
-pbmc &lt;- <span class="func">IntegrateLayers</span>(pbmc,
-  method = <span class="func">RPCAIntegration</span>(),  <span class="comment"># 或 CCAIntegration(), HarmonyIntegration()</span>
-  orig.reduction = <span class="str">"pca"</span>,
-  new.reduction = <span class="str">"integrated.rpca"</span>
-)
-
-<span class="comment"># 合併 layers 後繼續下游分析</span>
-pbmc[["RNA"]] &lt;- <span class="func">JoinLayers</span>(pbmc[["RNA"]])</pre></div>
       <div class="code-tab-content" id="py1"><pre><span class="kw">import</span> scvi
-
-<span class="comment"># 準備數據</span>
 scvi.model.SCVI.setup_anndata(adata, batch_key=<span class="str">"batch"</span>)
-
-<span class="comment"># 訓練模型</span>
 model = scvi.model.SCVI(adata, n_latent=<span class="num">30</span>)
 model.train(max_epochs=<span class="num">100</span>)
-
-<span class="comment"># 取得整合後的 latent embedding</span>
 adata.obsm[<span class="str">"X_scVI"</span>] = model.get_latent_representation()
-
-<span class="comment"># 用整合後的 embedding 做聚類和 UMAP</span>
-sc.pp.neighbors(adata, use_rep=<span class="str">"X_scVI"</span>)
-sc.tl.leiden(adata)
-sc.tl.umap(adata)</pre></div>
+sc.pp.neighbors(adata, use_rep=<span class="str">"X_scVI"</span>)</pre></div>
     </div>
   </section>
-
-  <section class="section">
-    <div class="section-label">驗證</div>
-    <h2>如何評估整合效果？</h2>
-    <div class="card-grid cols-2">
-      <div class="card"><div class="card-icon">👁️</div><h4>視覺檢查</h4><p>在 UMAP 上分別以「批次」和「細胞類型」著色。好的整合應讓同一細胞類型跨批次混合，但不同細胞類型仍然分開。</p></div>
-      <div class="card"><div class="card-icon">📊</div><h4>定量指標</h4><p>使用 <strong>kBET</strong>（批次混合度）和 <strong>ASW</strong>（silhouette width，生物學保守度）等指標。理想結果是高混合度 + 高保守度。</p></div>
-    </div>
-    <div class="callout warn">
-      <span class="callout-icon">⚠️</span>
-      <div><strong>過度整合的風險：</strong>如果某種細胞真的只存在於某個條件（如腫瘤細胞只在疾病樣本中），強行整合可能會錯誤地將它與其他細胞合併。務必保留生物學差異。</div>
-    </div>
-  </section>
-
-  <nav class="page-nav">
-    <a href="differential-expression.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 9：差異表達分析</span></a>
-    <a href="cellchat.html"><span class="nav-dir">下一個進階主題 →</span><span class="nav-title">細胞通訊 (CellChat)</span></a>
-  </nav>
+  <nav class="page-nav"><a href="differential-expression.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 9：DE</span></a><a href="cellchat.html"><span class="nav-dir">下一個主題 →</span><span class="nav-title">CellChat</span></a></nav>
 </main>
 <footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
 <script>
 window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
-function switchTab(btn,id){const p=btn.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(b=>b.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+
+// Generate stable points with batch and celltype info
+// Before integration: clusters by batch; After: clusters by type
+const pts=[];
+const typeCtrs=[{x:-4,y:3},{x:3,y:-3},{x:0,y:-5}]; // T, B, Mono
+const typeNames=['T cell','B cell','Monocyte'];
+const batchOff=[{dx:-3,dy:1},{dx:3,dy:-1}]; // batch offset
+for(let b=0;b<2;b++){for(let t=0;t<3;t++){for(let i=0;i<50;i++){
+  const tc=typeCtrs[t];
+  const afterX=tc.x+(Math.random()-0.5)*4;
+  const afterY=tc.y+(Math.random()-0.5)*4;
+  const beforeX=afterX+batchOff[b].dx*2.5+(Math.random()-0.5)*1.5;
+  const beforeY=afterY+batchOff[b].dy*2.5+(Math.random()-0.5)*1.5;
+  pts.push({bx:beforeX,by:beforeY,ax:afterX,ay:afterY,batch:b,type:t});
+}}}
+
+const batchColors=['rgba(41,128,185,0.5)','rgba(192,57,43,0.5)'];
+const typeColors=['rgba(26,107,90,0.5)','rgba(212,160,60,0.5)','rgba(142,68,173,0.5)'];
+
+let curMode='before', curColor='batch';
+const integChart=new Chart(document.getElementById('integChart'),{type:'scatter',data:{datasets:[{label:'',data:[],backgroundColor:[],pointRadius:3},{label:'',data:[],backgroundColor:[],pointRadius:3},{label:'',data:[],backgroundColor:[],pointRadius:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{title:{display:true,text:'UMAP 1'},min:-14,max:14},y:{title:{display:true,text:'UMAP 2'},min:-12,max:10}},plugins:{legend:{position:'top'}}}});
+
+function updateInteg(){
+  const isBefore=curMode==='before';
+  const isBatch=curColor==='batch';
+  document.getElementById('integDesc').innerHTML=isBefore?(isBatch?'<strong>整合前 × 批次著色：</strong>細胞按批次分開，同類型細胞被拆散。':'<strong>整合前 × 類型著色：</strong>同顏色（同類型）被拆散到不同區域。'):(isBatch?'<strong>整合後 × 批次著色：</strong>兩個批次混合在一起。':'<strong>整合後 × 類型著色：</strong>同類型細胞聚在一起，批次被消除。');
+  if(isBatch){
+    const b0=[],b1=[];
+    pts.forEach(p=>{const pt={x:isBefore?p.bx:p.ax,y:isBefore?p.by:p.ay};(p.batch===0?b0:b1).push(pt);});
+    integChart.data.datasets=[{label:'Batch 1',data:b0,backgroundColor:batchColors[0],pointRadius:3},{label:'Batch 2',data:b1,backgroundColor:batchColors[1],pointRadius:3}];
+  }else{
+    const groups=[[],[],[]];
+    pts.forEach(p=>{groups[p.type].push({x:isBefore?p.bx:p.ax,y:isBefore?p.by:p.ay});});
+    integChart.data.datasets=typeNames.map((n,i)=>({label:n,data:groups[i],backgroundColor:typeColors[i],pointRadius:3}));
+  }
+  integChart.update('none');
+}
+
+function showInteg(mode){curMode=mode;['before','after'].forEach(k=>{const b=document.getElementById('btn-'+k);b.style.background=k===mode?'var(--c-accent)':'var(--c-bg-alt)';b.style.color=k===mode?'#fff':'var(--c-ink)';});updateInteg();}
+function colorBy(c){curColor=c;['batch','type'].forEach(k=>{const b=document.getElementById('btn-'+k);b.style.background=k===c?'var(--c-highlight)':'var(--c-bg-alt)';b.style.color=k===c?'#fff':'var(--c-ink)';});updateInteg();}
+updateInteg();
 </script>
-</body>
-</html>
+</body></html>

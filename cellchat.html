@@ -1,118 +1,93 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>細胞通訊 (Cell-Cell Communication) — scRNA-seq 教學</title>
-  <meta name="description" content="scRNA-seq 細胞通訊分析：CellChat、CellPhoneDB、NicheNet 方法比較，ligand-receptor interaction 分析。">
-  <link rel="stylesheet" href="styles.css">
-</head>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>細胞通訊 (CellChat) — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"></head>
 <body>
-<nav class="top-nav"><div class="top-nav-inner">
-  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
-  <ul class="top-nav-links">
-    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html" class="active">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li>
-  </ul>
-</div></nav>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html" class="active">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
 <div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-
-<header class="page-hero">
-  <div class="step-badge">ADVANCED</div>
-  <h1>細胞通訊 (Cell-Cell Communication)</h1>
-  <p class="subtitle">透過 ligand-receptor interaction 分析，探索細胞間的訊號傳遞與微環境調控網絡。</p>
-</header>
-
+<header class="page-hero"><div class="step-badge">ADVANCED</div><h1>細胞通訊 (Cell-Cell Communication)</h1><p class="subtitle">分析 ligand-receptor 交互作用，探索細胞間的訊號傳遞網絡。</p></header>
 <main class="content-wrap">
-
-  <section class="section">
-    <div class="section-label">核心概念</div>
-    <h2>細胞如何「對話」？</h2>
-    <p>在組織微環境中，細胞並非孤立存在——它們透過分泌<span class="term">配體 (Ligand)<span class="term-tip">由一個細胞分泌的信號分子，如細胞因子、生長因子、趨化因子</span></span>，與鄰近細胞表面的<span class="term">受體 (Receptor)<span class="term-tip">細胞表面蛋白，能辨識並結合特定的配體，觸發下游訊號傳導</span></span>結合，觸發訊號傳導。scRNA-seq 能同時測量所有細胞的基因表達，因此可以推斷哪些細胞在「發送」什麼訊號、哪些細胞在「接收」。</p>
+  <section class="section"><div class="section-label">核心概念</div><h2>細胞如何「對話」？</h2>
+    <p>細胞透過分泌<span class="term">配體 (Ligand)<span class="term-tip">由一個細胞分泌的信號分子</span></span>與鄰近細胞的<span class="term">受體 (Receptor)<span class="term-tip">細胞表面蛋白，結合配體後觸發下游訊號</span></span>結合來傳遞訊號。scRNA-seq 可同時測量所有細胞的表達，因此能推斷誰在「發送」、誰在「接收」。</p>
   </section>
 
-  <section class="section">
-    <div class="section-label">方法比較</div>
-    <h2>主流分析工具</h2>
-    <table class="comp-table">
-      <thead><tr><th>工具</th><th>核心邏輯</th><th>特色</th></tr></thead>
-      <tbody>
-        <tr><td><strong>CellChat</strong> (R)</td><td>基於質量作用定律建模 L-R 交互機率</td><td>豐富的視覺化（圓形圖、氣泡圖）、支援跨條件比較</td></tr>
-        <tr><td><strong>CellPhoneDB</strong> (Py)</td><td>基於排列檢定的 L-R 配對篩選</td><td>支援多亞基複合體、社群活躍</td></tr>
-        <tr><td><strong>NicheNet</strong> (R)</td><td>從配體到下游基因的調控網路推斷</td><td>不只看 L-R 配對，還追蹤下游效應</td></tr>
-        <tr><td><strong>LIANA</strong> (R/Py)</td><td>整合多種方法的統一框架</td><td>可同時跑多種演算法並取共識</td></tr>
-      </tbody>
-    </table>
-
-    <div class="decision-tree">
-      <h4>🌳 我該用哪個工具？</h4>
-      <div class="dt-node"><span class="dt-q">Q1:</span><div>你需要漂亮的視覺化來呈現結果？ <span class="dt-arrow">→</span> <strong>CellChat</strong>，視覺化能力最強。</div></div>
-      <div class="dt-node"><span class="dt-q">Q2:</span><div>你想知道配體對下游基因的影響？ <span class="dt-arrow">→</span> <strong>NicheNet</strong>，能追蹤調控路徑。</div></div>
-      <div class="dt-node"><span class="dt-q">Q3:</span><div>你想跑多種方法取共識？ <span class="dt-arrow">→</span> <strong>LIANA</strong>，統一框架。</div></div>
+  <section class="section"><div class="section-label">互動模擬</div><h2>細胞通訊網絡探索器</h2>
+    <p>選擇一個「發送方」細胞類型，觀察它與各接收方之間的通訊強度。長條越長代表 L-R interaction 越多。</p>
+    <div class="interactive-panel">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;">
+        <button class="code-tab-btn" id="src-0" onclick="showSrc(0)" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 14px;">CD4 T</button>
+        <button class="code-tab-btn" id="src-1" onclick="showSrc(1)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">CD8 T</button>
+        <button class="code-tab-btn" id="src-2" onclick="showSrc(2)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">B cell</button>
+        <button class="code-tab-btn" id="src-3" onclick="showSrc(3)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">Monocyte</button>
+        <button class="code-tab-btn" id="src-4" onclick="showSrc(4)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">DC</button>
+      </div>
+      <div id="srcDesc" style="font-size:0.92rem;font-weight:600;color:var(--c-accent-dark);margin-bottom:8px;"></div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;">
+        <div style="flex:1;min-width:250px;">
+          <canvas id="netChart" height="240"></canvas>
+        </div>
+        <div style="flex:1;min-width:200px;">
+          <h4 style="font-size:0.9rem;margin-bottom:8px;">主要 L-R pairs</h4>
+          <div id="lrList" style="font-size:0.85rem;color:var(--c-ink-light);line-height:1.8;"></div>
+        </div>
+      </div>
     </div>
   </section>
 
-  <section class="section">
-    <div class="section-label">程式碼</div>
-    <h2>CellChat 實作範例</h2>
-    <div class="code-tabs">
-      <div class="code-tab-btns">
-        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / CellChat</button>
-        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / CellPhoneDB</button>
-      </div>
+  <section class="section"><div class="section-label">方法比較</div><h2>主流工具</h2>
+    <table class="comp-table"><thead><tr><th>工具</th><th>特色</th></tr></thead><tbody>
+      <tr><td><strong>CellChat</strong> (R)</td><td>質量作用模型，豐富視覺化</td></tr>
+      <tr><td><strong>CellPhoneDB</strong> (Py)</td><td>排列檢定，支援多亞基</td></tr>
+      <tr><td><strong>NicheNet</strong> (R)</td><td>追蹤 L-R 到下游基因效應</td></tr>
+      <tr><td><strong>LIANA</strong> (R/Py)</td><td>整合多種方法取共識</td></tr>
+    </tbody></table>
+  </section>
+
+  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
+    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / CellChat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / CellPhoneDB</button></div>
       <div class="code-tab-content active" id="r1"><pre><span class="func">library</span>(CellChat)
-
-<span class="comment"># 從 Seurat 物件建立 CellChat 物件</span>
 cellchat &lt;- <span class="func">createCellChat</span>(pbmc, group.by = <span class="str">"cell_type"</span>)
-
-<span class="comment"># 載入 ligand-receptor 資料庫</span>
-CellChatDB &lt;- <span class="func">CellChatDB.human</span>  <span class="comment"># 或 CellChatDB.mouse</span>
-cellchat@DB &lt;- CellChatDB
-
-<span class="comment"># 計算交互作用</span>
+cellchat@DB &lt;- <span class="func">CellChatDB.human</span>
 cellchat &lt;- <span class="func">subsetData</span>(cellchat)
 cellchat &lt;- <span class="func">identifyOverExpressedGenes</span>(cellchat)
 cellchat &lt;- <span class="func">identifyOverExpressedInteractions</span>(cellchat)
 cellchat &lt;- <span class="func">computeCommunProb</span>(cellchat)
-cellchat &lt;- <span class="func">computeCommunProbPathway</span>(cellchat)
 cellchat &lt;- <span class="func">aggregateNet</span>(cellchat)
-
-<span class="comment"># 視覺化</span>
-<span class="func">netVisual_circle</span>(cellchat@net$count)
-<span class="func">netVisual_bubble</span>(cellchat, sources.use = <span class="num">1</span>, targets.use = <span class="func">c</span>(<span class="num">2</span>,<span class="num">3</span>,<span class="num">4</span>))</pre></div>
+<span class="func">netVisual_circle</span>(cellchat@net$count)</pre></div>
       <div class="code-tab-content" id="py1"><pre><span class="kw">from</span> cellphonedb.src.core.methods <span class="kw">import</span> cpdb_analysis_method
-
-<span class="comment"># 準備輸入檔案</span>
-<span class="comment"># counts_file: 正規化後的表達矩陣</span>
-<span class="comment"># meta_file: 細胞類型註釋</span>
 cpdb_results = cpdb_analysis_method.call(
     cpdb_file_path=<span class="str">"cellphonedb.zip"</span>,
     meta_file_path=<span class="str">"meta.txt"</span>,
     counts_file_path=<span class="str">"counts.h5ad"</span>,
-    counts_data=<span class="str">"hgnc_symbol"</span>,
-    output_path=<span class="str">"./output"</span>
-)
-
-<span class="comment"># 結果包含 means.txt 和 pvalues.txt</span></pre></div>
+    output_path=<span class="str">"./output"</span>)</pre></div>
     </div>
+    <div class="callout warn"><span class="callout-icon">⚠️</span><div><strong>這些都是推斷，不是直接證據。</strong>RNA 表達 ≠ 蛋白質表達 ≠ 真正的物理交互。重要結果需實驗驗證。</div></div>
   </section>
-
-  <section class="section">
-    <div class="section-label">注意事項</div>
-    <h2>解讀時的注意事項</h2>
-    <div class="callout warn">
-      <span class="callout-icon">⚠️</span>
-      <div><strong>這些分析都是「推斷」，不是直接證據。</strong>scRNA-seq 只能告訴我們配體和受體的 RNA 是否被表達，但 RNA 表達不等於蛋白質表達，更不等於真正的物理交互作用。重要的結果務必用實驗（如共培養、阻斷實驗）驗證。</div>
-    </div>
-  </section>
-
-  <nav class="page-nav">
-    <a href="integration.html"><span class="nav-dir">← 上一個主題</span><span class="nav-title">數據整合 (Integration)</span></a>
-    <a href="trajectory.html"><span class="nav-dir">下一個主題 →</span><span class="nav-title">軌跡分析 (Trajectory)</span></a>
-  </nav>
+  <nav class="page-nav"><a href="integration.html"><span class="nav-dir">← 上一個主題</span><span class="nav-title">Integration</span></a><a href="trajectory.html"><span class="nav-dir">下一個主題 →</span><span class="nav-title">Trajectory</span></a></nav>
 </main>
 <footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 <script>
 window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
-function switchTab(btn,id){const p=btn.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(b=>b.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
+
+const cellTypes=['CD4 T','CD8 T','B cell','Monocyte','DC'];
+const commData=[
+  {to:[12,28,8,22,15],lrs:['CD40LG → CD40 (B activation)','IFNG → IFNGR (Mono signaling)','IL2 → IL2RA (T cell crosstalk)']},
+  {to:[25,8,5,18,12],lrs:['GZMB → ... (cytotoxicity)','FASLG → FAS (apoptosis)','CCL5 → CCR5 (Mono recruit)']},
+  {to:[15,6,10,8,20],lrs:['CD40 → CD40LG (T activation)','IL10 → IL10RA (immune regulation)','IGHG1 → FCGR (Ab-mediated)']},
+  {to:[20,15,12,5,30],lrs:['TNF → TNFRSF1A (inflammation)','CCL2 → CCR2 (chemotaxis)','IL1B → IL1R (DC activation)']},
+  {to:[35,22,18,10,5],lrs:['HLA-DRA → CD4 (antigen present.)','CCL19 → CCR7 (T cell homing)','IL12 → IL12RB (T polarization)']}
+];
+
+const colors=['#1a6b5a','#c0392b','#2980b9','#d4a03c','#8e44ad'];
+const netChart=new Chart(document.getElementById('netChart'),{type:'bar',data:{labels:cellTypes,datasets:[{data:commData[0].to,backgroundColor:colors.map(c=>c+'99'),borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:'交互數量'},min:0,max:40},x:{title:{display:true,text:'接收方'}}}}});
+
+function showSrc(i){
+  for(let j=0;j<5;j++){const b=document.getElementById('src-'+j);b.style.background=j===i?'var(--c-accent)':'var(--c-bg-alt)';b.style.color=j===i?'#fff':'var(--c-ink)';}
+  document.getElementById('srcDesc').textContent='發送方：'+cellTypes[i]+' → 各接收方的通訊數量';
+  netChart.data.datasets[0].data=commData[i].to;netChart.update('none');
+  document.getElementById('lrList').innerHTML=commData[i].lrs.map(lr=>'<div style="padding:4px 0;border-bottom:1px solid var(--c-border-light);">🔗 '+lr+'</div>').join('');
+}
+showSrc(0);
 </script>
-</body>
-</html>
+</body></html>
