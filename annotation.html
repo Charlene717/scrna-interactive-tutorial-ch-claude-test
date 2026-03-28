@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 8: 細胞註釋 (Annotation) — scRNA-seq 教學</title>
+  <meta name="description" content="scRNA-seq 細胞類型註釋：手動 marker gene 鑑定、自動註釋工具 SingleR/Azimuth，搭配程式碼範例。">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
+  <ul class="top-nav-links">
+    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html" class="active">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero">
+  <div class="step-badge">STEP 8 / 9</div>
+  <h1>細胞註釋 (Annotation)</h1>
+  <p class="subtitle">將數學上的 Cluster 0, 1, 2… 轉譯為有生物學意義的細胞類型名稱。</p>
+</header>
+
+<main class="content-wrap">
+
+  <section class="section">
+    <div class="section-label">核心概念</div>
+    <h2>從 Cluster 到細胞類型</h2>
+    <p>聚類只是數學分群，<strong>不會告訴你</strong>每個 cluster 是什麼細胞。註釋的任務就是結合已知的<span class="term">標誌基因 (Marker Genes)<span class="term-tip">在特定細胞類型中特異性高表達的基因，如 CD3D 代表 T 細胞、MS4A1 代表 B 細胞</span></span>與領域知識，為每個 cluster 貼上生物學標籤。</p>
+  </section>
+
+  <section class="section">
+    <div class="section-label">三種策略</div>
+    <h2>註釋方法</h2>
+    <div class="workflow">
+      <div class="workflow-step" data-step="1">
+        <h4>差異表達分析 (DEA) 找 Markers</h4>
+        <p>比較目標 cluster 與其餘所有細胞，找出表達量顯著上升的基因。這些基因就是該 cluster 的「候選標誌」。</p>
+      </div>
+      <div class="workflow-step" data-step="2">
+        <h4>自動註釋工具</h4>
+        <p>使用 <strong>SingleR</strong>（R）、<strong>Azimuth</strong>（Seurat 生態系）或 <strong>CellTypist</strong>（Python）等演算法，將你的數據與高品質參考數據集進行比對，自動推斷細胞類型。</p>
+      </div>
+      <div class="workflow-step" data-step="3">
+        <h4>專家手動驗證（黃金標準）</h4>
+        <p>由領域專家根據文獻中的已知 marker gene 列表，逐一檢查自動註釋的結果。這一步<strong>不可省略</strong>，因為自動工具可能受參考數據集的品質與完整度影響。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">常用 Markers</div>
+    <h2>PBMC 常見細胞類型標誌基因</h2>
+    <table class="comp-table">
+      <thead><tr><th>細胞類型</th><th>代表 Marker Genes</th></tr></thead>
+      <tbody>
+        <tr><td><strong>CD4+ T 細胞</strong></td><td>CD3D, CD3E, IL7R</td></tr>
+        <tr><td><strong>CD8+ T 細胞</strong></td><td>CD3D, CD8A, CD8B</td></tr>
+        <tr><td><strong>B 細胞</strong></td><td>MS4A1 (CD20), CD79A</td></tr>
+        <tr><td><strong>NK 細胞</strong></td><td>GNLY, NKG7, KLRD1</td></tr>
+        <tr><td><strong>單核球 (Monocytes)</strong></td><td>CD14, LYZ, S100A8</td></tr>
+        <tr><td><strong>樹突細胞 (DC)</strong></td><td>FCER1A, CST3</td></tr>
+        <tr><td><strong>血小板</strong></td><td>PPBP, PF4</td></tr>
+      </tbody>
+    </table>
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div>上表僅適用於人類 PBMC。不同物種、不同組織的 marker genes 完全不同，務必查閱相關文獻。</div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">程式碼</div>
+    <h2>實作範例</h2>
+    <div class="code-tabs">
+      <div class="code-tab-btns">
+        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button>
+        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button>
+      </div>
+      <div class="code-tab-content active" id="r1"><pre><span class="comment"># 找每個 cluster 的 marker genes</span>
+markers &lt;- <span class="func">FindAllMarkers</span>(pbmc, only.pos = <span class="kw">TRUE</span>, min.pct = <span class="num">0.25</span>, logfc.threshold = <span class="num">0.25</span>)
+
+<span class="comment"># 查看 top markers</span>
+markers <span class="kw">%>%</span> <span class="func">group_by</span>(cluster) <span class="kw">%>%</span> <span class="func">slice_max</span>(avg_log2FC, n = <span class="num">5</span>)
+
+<span class="comment"># 用已知 markers 視覺化驗證</span>
+<span class="func">FeaturePlot</span>(pbmc, features = <span class="func">c</span>(<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>, <span class="str">"CD14"</span>, <span class="str">"GNLY"</span>))
+<span class="func">DotPlot</span>(pbmc, features = <span class="func">c</span>(<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>, <span class="str">"CD14"</span>)) + <span class="func">RotatedAxis</span>()
+
+<span class="comment"># 手動指定細胞類型</span>
+new.ids &lt;- <span class="func">c</span>(<span class="str">"CD4 T"</span>, <span class="str">"CD14 Mono"</span>, <span class="str">"B cell"</span>, <span class="str">"CD8 T"</span>, ...)
+<span class="func">names</span>(new.ids) &lt;- <span class="func">levels</span>(pbmc)
+pbmc &lt;- <span class="func">RenameIdents</span>(pbmc, new.ids)</pre></div>
+      <div class="code-tab-content" id="py1"><pre><span class="comment"># 找 marker genes</span>
+sc.tl.rank_genes_groups(adata, groupby=<span class="str">"leiden"</span>, method=<span class="str">"wilcoxon"</span>)
+sc.pl.rank_genes_groups(adata, n_genes=<span class="num">10</span>)
+
+<span class="comment"># 視覺化驗證</span>
+sc.pl.umap(adata, color=[<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>, <span class="str">"CD14"</span>])
+sc.pl.dotplot(adata, var_names=[<span class="str">"CD3D"</span>, <span class="str">"MS4A1"</span>, <span class="str">"CD14"</span>], groupby=<span class="str">"leiden"</span>)
+
+<span class="comment"># 手動指定</span>
+cluster_to_celltype = {<span class="str">"0"</span>: <span class="str">"CD4 T"</span>, <span class="str">"1"</span>: <span class="str">"CD14 Mono"</span>, ...}
+adata.obs[<span class="str">"cell_type"</span>] = adata.obs[<span class="str">"leiden"</span>].map(cluster_to_celltype)</pre></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">決策引導</div>
+    <h2>該用手動還是自動註釋？</h2>
+    <div class="decision-tree">
+      <h4>🌳 決策流程</h4>
+      <div class="dt-node"><span class="dt-q">Q1:</span><div>你的組織類型有良好的公開參考數據集嗎？ <span class="dt-arrow">→ 是 →</span> 使用 <strong>Azimuth / SingleR</strong> 做初步自動註釋，再手動驗證。</div></div>
+      <div class="dt-node"><span class="dt-q">Q2:</span><div>沒有參考數據集？ <span class="dt-arrow">→</span> 使用 <strong>DEA 找 markers + 文獻比對</strong> 做純手動註釋。</div></div>
+      <div class="dt-node"><span class="dt-q">Q3:</span><div>某些 cluster 的 markers 很混亂、不典型？ <span class="dt-arrow">→</span> 考慮是否為 doublets、過度聚類、或真正的新亞群——可能需要回頭調整 QC 或 resolution。</div></div>
+    </div>
+  </section>
+
+  <nav class="page-nav">
+    <a href="umap.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 7：UMAP</span></a>
+    <a href="differential-expression.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 9：差異表達分析</span></a>
+  </nav>
+</main>
+<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(btn,id){const p=btn.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(b=>b.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+</script>
+</body>
+</html>
