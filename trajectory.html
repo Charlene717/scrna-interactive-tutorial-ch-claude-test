@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>軌跡分析 (Trajectory / Pseudotime) — scRNA-seq 教學</title>
+  <meta name="description" content="scRNA-seq 軌跡與擬時序分析：Monocle3、Slingshot、RNA Velocity 方法比較與選擇指南。">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<nav class="top-nav"><div class="top-nav-inner">
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
+  <ul class="top-nav-links">
+    <li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html" class="active">Trajectory</a></li>
+  </ul>
+</div></nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero">
+  <div class="step-badge">ADVANCED</div>
+  <h1>軌跡分析 (Trajectory / Pseudotime)</h1>
+  <p class="subtitle">從靜態的快照數據中推估細胞狀態轉變的動態路徑與時間順序。</p>
+</header>
+
+<main class="content-wrap">
+
+  <section class="section">
+    <div class="section-label">核心概念</div>
+    <h2>什麼是 Pseudotime？</h2>
+    <p>scRNA-seq 是一張「快照」——在某個時間點捕捉所有細胞的狀態。但因為不同細胞處於分化過程的不同階段，我們可以利用它們之間的表達漸變，重建出一條<span class="term">擬時序 (Pseudotime)<span class="term-tip">一個連續的數值軸，代表細胞沿某個生物學過程（如分化、活化）的進展程度</span></span>軸——好比從一張團體照中推測每個人的年齡。</p>
+
+    <div class="card-grid cols-2">
+      <div class="card"><div class="card-icon">🎯</div><h4>適用情境</h4><p>細胞分化（幹細胞→終端細胞）、免疫細胞活化、疾病進程、藥物反應動態。</p></div>
+      <div class="card"><div class="card-icon">⚠️</div><h4>前提假設</h4><p>數據中<strong>必須存在處於不同狀態的細胞</strong>。如果所有細胞都已是終端分化狀態，就無法重建軌跡。</p></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">方法比較</div>
+    <h2>主流工具</h2>
+    <table class="comp-table">
+      <thead><tr><th>工具</th><th>核心邏輯</th><th>適用情境</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Monocle3</strong> (R)</td><td>在 UMAP 上學習主圖 (Principal Graph)</td><td>通用型，支援分支軌跡</td></tr>
+        <tr><td><strong>Slingshot</strong> (R)</td><td>在降維空間擬合同時主曲線</td><td>簡單線性/分支軌跡，統計嚴謹</td></tr>
+        <tr><td><strong>RNA Velocity</strong> (Py)</td><td>利用 spliced/unspliced mRNA 比率推斷方向</td><td>推斷轉變的「方向」，而非只是排序</td></tr>
+        <tr><td><strong>CytoTRACE</strong></td><td>基於基因多樣性推估分化潛能</td><td>預測哪些細胞較「年輕」（較未分化）</td></tr>
+        <tr><td><strong>PAGA</strong> (Py)</td><td>基於圖的抽象軌跡推斷</td><td>大規模數據的粗粒度拓撲結構</td></tr>
+      </tbody>
+    </table>
+
+    <div class="decision-tree">
+      <h4>🌳 我該用哪個方法？</h4>
+      <div class="dt-node"><span class="dt-q">Q1:</span><div>你只想知道分化的「順序」？ <span class="dt-arrow">→</span> <strong>Monocle3</strong> 或 <strong>Slingshot</strong>。</div></div>
+      <div class="dt-node"><span class="dt-q">Q2:</span><div>你還想知道分化的「方向」？ <span class="dt-arrow">→</span> <strong>RNA Velocity</strong>（scVelo），能推斷每個細胞的瞬時方向。</div></div>
+      <div class="dt-node"><span class="dt-q">Q3:</span><div>你有很多 cluster，想先看整體拓撲關係？ <span class="dt-arrow">→</span> <strong>PAGA</strong>，然後再做細粒度軌跡。</div></div>
+      <div class="dt-node"><span class="dt-q">Q4:</span><div>你想知道哪些細胞最未分化？ <span class="dt-arrow">→</span> <strong>CytoTRACE</strong> 做分化潛能預測。</div></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">程式碼</div>
+    <h2>實作範例</h2>
+    <div class="code-tabs">
+      <div class="code-tab-btns">
+        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Monocle3</button>
+        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / scVelo</button>
+      </div>
+      <div class="code-tab-content active" id="r1"><pre><span class="func">library</span>(monocle3)
+
+<span class="comment"># 從 Seurat 轉換為 Monocle3 cell_data_set</span>
+cds &lt;- <span class="func">as.cell_data_set</span>(pbmc)
+
+<span class="comment"># 學習軌跡圖</span>
+cds &lt;- <span class="func">learn_graph</span>(cds)
+
+<span class="comment"># 指定起始細胞（root），計算 pseudotime</span>
+cds &lt;- <span class="func">order_cells</span>(cds)  <span class="comment"># 互動選擇 root</span>
+
+<span class="comment"># 視覺化</span>
+<span class="func">plot_cells</span>(cds, color_cells_by = <span class="str">"pseudotime"</span>)
+
+<span class="comment"># 找沿軌跡變化的基因</span>
+trajectory_genes &lt;- <span class="func">graph_test</span>(cds, neighbor_graph = <span class="str">"principal_graph"</span>)</pre></div>
+      <div class="code-tab-content" id="py1"><pre><span class="kw">import</span> scvelo <span class="kw">as</span> scv
+
+<span class="comment"># 讀入包含 spliced/unspliced 的 loom 或 h5ad</span>
+adata = scv.read(<span class="str">"data.h5ad"</span>)
+
+<span class="comment"># 預處理</span>
+scv.pp.filter_and_normalize(adata, min_shared_counts=<span class="num">20</span>)
+scv.pp.moments(adata, n_pcs=<span class="num">30</span>, n_neighbors=<span class="num">30</span>)
+
+<span class="comment"># 估算 RNA velocity</span>
+scv.tl.velocity(adata)
+scv.tl.velocity_graph(adata)
+
+<span class="comment"># 視覺化：在 UMAP 上畫箭頭</span>
+scv.pl.velocity_embedding_stream(adata, basis=<span class="str">"umap"</span>)
+
+<span class="comment"># 找 velocity 驅動的基因</span>
+scv.tl.rank_velocity_genes(adata)
+top_genes = adata.uns[<span class="str">"rank_velocity_genes"</span>][<span class="str">"names"</span>]</pre></div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-label">注意事項</div>
+    <h2>軌跡分析的注意事項</h2>
+
+    <div class="callout danger">
+      <span class="callout-icon">🚨</span>
+      <div><strong>Pseudotime ≠ 真實時間。</strong>它是根據表達相似性排列的「虛擬」時間軸。不同的起始點設定、不同的方法，可能給出不同的軌跡。結果需要用實驗（如 lineage tracing、time-course 實驗）驗證。</div>
+    </div>
+
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>RNA Velocity 的限制：</strong>scVelo 依賴 spliced/unspliced 讀段的準確量化，這在 10x Chromium 3' 數據中可能不夠精確。近年來 <strong>UniTVelo</strong> 和 <strong>VeloVAE</strong> 等新方法嘗試改善此問題。</div>
+    </div>
+  </section>
+
+  <section class="quiz-section">
+    <h3>📝 自我檢測</h3>
+    <div class="quiz-q" data-answer="1">
+      <p>1. RNA Velocity 相比傳統 pseudotime 的獨特優勢是？</p>
+      <div class="quiz-options">
+        <div class="quiz-opt" data-idx="0">A. 不需要先做聚類</div>
+        <div class="quiz-opt" data-idx="1">B. 能推斷細胞轉變的「方向」，而不只是排序</div>
+        <div class="quiz-opt" data-idx="2">C. 完全不需要人工設定起始點</div>
+        <div class="quiz-opt" data-idx="3">D. 計算速度比 Monocle3 快</div>
+      </div>
+      <div class="quiz-feedback" id="fb1"></div>
+    </div>
+  </section>
+
+  <nav class="page-nav">
+    <a href="cellchat.html"><span class="nav-dir">← 上一個主題</span><span class="nav-title">細胞通訊 (CellChat)</span></a>
+    <a href="index.html"><span class="nav-dir">🏠 回到首頁</span><span class="nav-title">教學首頁</span></a>
+  </nav>
+</main>
+<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script>
+window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+function switchTab(btn,id){const p=btn.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(b=>b.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById(id).classList.add('active');}
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const answer=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(opt=>{opt.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+opt.dataset.idx===answer){opt.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ 正確！RNA Velocity 利用 spliced/unspliced 比率推斷瞬時方向，這是傳統 pseudotime 做不到的。';}else{opt.classList.add('wrong');q.querySelectorAll('.quiz-opt')[answer].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 B。RNA Velocity 的核心優勢在於推斷方向性。';}});});});
+</script>
+</body>
+</html>
