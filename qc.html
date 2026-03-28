@@ -1,355 +1,394 @@
 <!DOCTYPE html>
-<html lang="zh-TW">
+<html lang="zh-Hant">
 <head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>QC · scRNA-seq Tutorial</title>
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step 1: 品質管控 (QC) — scRNA-seq 教學</title>
+  <meta name="description" content="學習 scRNA-seq 品質管控：nFeature、nCount、MT% 閾值設定、doublet 偵測與環境 RNA 處理，搭配互動模擬器與 Seurat/Scanpy 程式碼。">
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 </head>
 <body>
-<script src="navbar.js"></script>
-<div class="page-wrap">
 
-  <div class="page-hero fade-up">
-    <div class="step-tag">Step 01</div>
-    <h1 class="page-title">Quality Control</h1>
-    <p class="page-subtitle">
-      過濾低品質細胞、空液滴與雙細胞（doublets）。QC 是整個分析流程的基石——
-      跳過它，後續所有結果都將失去可信度。
-    </p>
-    <div style="margin-top:1.5rem;display:flex;gap:0.75rem;flex-wrap:wrap">
-      <span class="badge badge-teal">nFeature_RNA</span>
-      <span class="badge badge-blue">nCount_RNA</span>
-      <span class="badge badge-orange">percent.mt</span>
-      <span class="badge badge-purple">DoubletFinder</span>
-      <span class="badge badge-green">SoupX</span>
-    </div>
+<nav class="top-nav">
+  <div class="top-nav-inner">
+    <a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a>
+    <ul class="top-nav-links">
+      <li><a href="qc.html" class="active">QC</a></li>
+      <li><a href="normalization.html">Normalization</a></li>
+      <li><a href="variable-features.html">Features</a></li>
+      <li><a href="scaling.html">Scaling</a></li>
+      <li><a href="pca.html">PCA</a></li>
+      <li><a href="clustering.html">Clustering</a></li>
+      <li><a href="umap.html">UMAP</a></li>
+      <li><a href="annotation.html">Annotation</a></li>
+      <li><a href="differential-expression.html">DE</a></li>
+      <li><a href="integration.html">Integration</a></li>
+      <li><a href="cellchat.html">CellChat</a></li>
+      <li><a href="trajectory.html">Trajectory</a></li>
+    </ul>
   </div>
+</nav>
+<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
 
-  <!-- CONCEPTS -->
-  <div class="section fade-up fade-up-1">
-    <div class="section-title">核心 QC 指標</div>
-    <div class="card-grid">
+<header class="page-hero">
+  <div class="step-badge">STEP 1 / 9</div>
+  <h1>品質管控 (Quality Control)</h1>
+  <p class="subtitle">過濾低品質細胞與技術假象，為後續分析奠定乾淨的數據基礎。</p>
+</header>
+
+<main class="content-wrap">
+
+  <!-- ===== Section 1: Why QC ===== -->
+  <section class="section">
+    <div class="section-label">概覽</div>
+    <h2>為什麼 QC 是最關鍵的第一步？</h2>
+    <p>單細胞捕獲技術的物理限制意味著原始數據中必然混入大量雜訊——<span class="term">空液滴<span class="term-tip">Empty droplets：未包含細胞的液滴，只捕獲了環境背景 RNA</span></span>、破裂的死細胞、以及<span class="term">雙細胞 (Doublets)<span class="term-tip">兩個細胞被包裹在同一個液滴中，產生混合的基因表達譜</span></span>。若未妥善過濾，這些雜訊會在降維與分群時產生虛假的 cluster，導致錯誤的生物學結論。</p>
+
+    <div class="callout tip">
+      <span class="callout-icon">💡</span>
+      <div><strong>核心原則：</strong>QC 沒有「放諸四海皆準」的閾值。最佳做法是根據你的物種、組織類型和定序平台，結合視覺化圖表來做判斷，而非盲目套用他人的數字。</div>
+    </div>
+  </section>
+
+  <!-- ===== Section 2: Core Metrics ===== -->
+  <section class="section">
+    <div class="section-label">核心指標</div>
+    <h2>細胞層級的三大 QC 指標</h2>
+
+    <div class="card-grid cols-3">
       <div class="card">
-        <div style="font-size:1.5rem;margin-bottom:0.75rem">🧬</div>
-        <h3 style="color:var(--teal);font-family:var(--font-mono);font-size:0.85rem;margin-bottom:0.5rem">nFeature_RNA</h3>
-        <p style="font-size:0.9rem;color:var(--text2)">單一細胞偵測到的基因數量。<br>
-          <span style="color:var(--red)">過低 &lt;200</span>：破裂細胞或空液滴<br>
-          <span style="color:var(--orange)">過高</span>：可能為雙細胞 (doublet)
-        </p>
+        <div class="card-icon">🔢</div>
+        <h4>nFeature_RNA</h4>
+        <p>單一細胞中偵測到的<strong>基因數量</strong>。過低（&lt; 200）代表空液滴或碎片；過高則暗示 doublet。</p>
       </div>
       <div class="card">
-        <div style="font-size:1.5rem;margin-bottom:0.75rem">📊</div>
-        <h3 style="color:var(--blue);font-family:var(--font-mono);font-size:0.85rem;margin-bottom:0.5rem">nCount_RNA</h3>
-        <p style="font-size:0.9rem;color:var(--text2)">所有轉錄本分子的總 UMI 數量。應與 nFeature 呈高度正相關。異常值通常對應空液滴或多細胞。</p>
+        <div class="card-icon">📊</div>
+        <h4>nCount_RNA</h4>
+        <p>該細胞的<strong>總 UMI 分子數</strong>。應與 nFeature 高度正相關，異常偏離者通常為技術假象。</p>
       </div>
       <div class="card">
-        <div style="font-size:1.5rem;margin-bottom:0.75rem">🔴</div>
-        <h3 style="color:var(--orange);font-family:var(--font-mono);font-size:0.85rem;margin-bottom:0.5rem">percent.mt</h3>
-        <p style="font-size:0.9rem;color:var(--text2)">粒線體基因佔比。細胞死亡時細胞質 mRNA 外漏，粒線體 RNA 相對殘留。常見閾值：5%–20%（視組織而異）。</p>
+        <div class="card-icon">🔋</div>
+        <h4>percent.mt</h4>
+        <p><strong>粒線體基因佔比</strong>，是判斷細胞死活最重要的指標。細胞破裂時 mRNA 外洩，但粒線體 RNA 傾向殘留。</p>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- INTERACTIVE SIMULATOR -->
-  <div class="section fade-up">
-    <div class="section-title">互動式 QC 模擬器</div>
-    <div class="card" style="padding:2rem">
-      <p style="color:var(--text2);font-size:0.9rem;margin-bottom:1.5rem">拖曳滑桿調整閾值，即時觀察過濾效果。<span style="color:var(--green)">綠色</span> = 通過；<span style="color:var(--red)">紅色</span> = 剔除。</p>
+  <!-- ===== Section 3: Interactive Sim ===== -->
+  <section class="section">
+    <div class="section-label">互動模擬</div>
+    <h2>QC 散佈圖模擬器</h2>
+    <p>拖動下方滑桿，觀察不同閾值如何篩選細胞。綠色點為通過 QC 的細胞，紅色點為被剔除的細胞。</p>
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;flex-wrap:wrap">
-        <div>
-          <div class="slider-group">
-            <div class="slider-label">最少基因數 (min nFeature) <span id="v-minf">200</span></div>
-            <input type="range" id="s-minf" min="50" max="800" value="200">
-          </div>
-          <div class="slider-group">
-            <div class="slider-label">最多基因數 (max nFeature) <span id="v-maxf">4000</span></div>
-            <input type="range" id="s-maxf" min="1000" max="8000" value="4000">
-          </div>
-          <div class="slider-group">
-            <div class="slider-label">最大粒線體比例 (max MT%) <span id="v-mt">10</span>%</div>
-            <input type="range" id="s-mt" min="1" max="50" value="10">
-          </div>
-          <div class="stats-row" style="margin-top:1.5rem">
-            <div class="stat-card"><div class="stat-val" id="st-total" style="color:var(--text)">1000</div><div class="stat-label">Total Cells</div></div>
-            <div class="stat-card"><div class="stat-val" id="st-pass" style="color:var(--green)">—</div><div class="stat-label">Pass QC</div></div>
-            <div class="stat-card"><div class="stat-val" id="st-fail" style="color:var(--red)">—</div><div class="stat-label">Removed</div></div>
-          </div>
-        </div>
-        <div>
-          <div class="plot-container" style="padding:0.5rem">
-            <canvas id="qc-canvas" height="280"></canvas>
-          </div>
-        </div>
+    <div class="interactive-panel">
+      <div class="sim-stats">
+        <span class="sim-stat pass" id="statPass">保留: —</span>
+        <span class="sim-stat fail" id="statFail">剔除: —</span>
+      </div>
+
+      <div class="slider-group">
+        <label>最少基因數 (Min nFeature) <span id="valMinFeat">200</span></label>
+        <input type="range" id="sliderMinFeat" min="50" max="500" value="200" step="10">
+      </div>
+      <div class="slider-group">
+        <label>最多基因數 (Max nFeature) <span id="valMaxFeat">4000</span></label>
+        <input type="range" id="sliderMaxFeat" min="2000" max="6000" value="4000" step="100">
+      </div>
+      <div class="slider-group">
+        <label>最高 MT% <span id="valMT">10%</span></label>
+        <input type="range" id="sliderMT" min="3" max="25" value="10" step="1">
+      </div>
+
+      <div class="chart-container">
+        <canvas id="qcChart"></canvas>
+      </div>
+      <p style="font-size:0.82rem;color:var(--c-ink-muted);text-align:center;">X 軸：nCount_RNA（總 UMI 數）｜ Y 軸：nFeature_RNA（基因數）｜ 點大小：MT%</p>
+    </div>
+  </section>
+
+  <!-- ===== Section 4: Gene Level ===== -->
+  <section class="section">
+    <div class="section-label">基因層級</div>
+    <h2>基因層級的過濾</h2>
+    <p>除了細胞品質，我們也需移除<strong>極低表達的基因</strong>——通常剔除「在少於 3 個細胞中被偵測到的基因」。這些基因多半是定序雜訊，且在統計分析中無法提供顯著性。</p>
+
+    <div class="card-grid cols-2">
+      <div class="card">
+        <h4>🧬 核糖體基因（RPS / RPL）</h4>
+        <p>比例過低可能暗示細胞品質不佳。部分流程會選擇性移除或標記，但並非普遍做法。</p>
+      </div>
+      <div class="card">
+        <h4>🩸 紅血球基因（HBA / HBB）</h4>
+        <p>在血液或富含血管的組織中，若非研究紅血球本身，通常會過濾掉比例過高的細胞。</p>
       </div>
     </div>
-  </div>
+  </section>
 
-  <!-- R CODE -->
-  <div class="section fade-up">
-    <div class="section-title">R (Seurat) 程式碼</div>
+  <!-- ===== Section 5: Advanced ===== -->
+  <section class="section">
+    <div class="section-label">進階處理</div>
+    <h2>處理技術性假象</h2>
 
-    <div style="margin-bottom:1rem">
-      <div class="tab-bar">
-        <button class="tab-btn active" data-tab="t1">基本 QC</button>
-        <button class="tab-btn" data-tab="t2">進階：Doublets</button>
-        <button class="tab-btn" data-tab="t3">進階：Ambient RNA</button>
+    <div class="card">
+      <h4>👯 雙細胞偵測 (Doublet Detection)</h4>
+      <p>基本的 nFeature 上限無法完全抓到由兩個小細胞組成的 doublet。需要使用專門的演算法來模擬 doublet 特徵並計算每個細胞的 doublet score。</p>
+      <p><strong>常用工具：</strong>DoubletFinder (R)、Scrublet (Python)、scDblFinder (R/Bioconductor)</p>
+    </div>
+
+    <div class="card">
+      <h4>🫧 環境背景 RNA (Ambient RNA / Soup)</h4>
+      <p>破裂細胞釋出的游離 RNA 會被其他液滴一併捕獲，導致「污染」——例如 T 細胞竟然檢測到肝細胞特異基因。需從表達矩陣中估算並扣除這部分背景。</p>
+      <p><strong>常用工具：</strong>SoupX (R)、CellBender (Python / GPU)</p>
+    </div>
+  </section>
+
+  <!-- ===== Section 6: Decision Tree ===== -->
+  <section class="section">
+    <div class="section-label">決策引導</div>
+    <h2>如何選擇 QC 閾值？</h2>
+
+    <div class="decision-tree">
+      <h4>🌳 閾值策略決策流程</h4>
+      <div class="dt-node">
+        <span class="dt-q">Q1:</span>
+        <div>你有多個樣本 / 批次嗎？ <span class="dt-arrow">→ 是 →</span> 建議使用<strong>自適應閾值</strong>（MAD-based），讓每個樣本根據自身分佈決定閾值。</div>
       </div>
-      <div data-panel="t1" class="tab-panel active">
-        <div class="code-wrap">
-          <div class="code-header">
-            <span class="lang-tag">◆ R · Seurat</span>
-            <button class="copy-btn">Copy</button>
-          </div>
-          <pre><span class="cm"># 載入套件</span>
-<span class="kw">library</span>(Seurat)
-<span class="kw">library</span>(ggplot2)
-
-<span class="cm"># 讀取 10x Genomics 資料</span>
-counts <span class="op">&lt;-</span> <span class="fn">Read10X</span>(<span class="op">data.dir =</span> <span class="st">"filtered_feature_bc_matrix/"</span>)
-seurat_obj <span class="op">&lt;-</span> <span class="fn">CreateSeuratObject</span>(
-  <span class="op">counts =</span> counts,
-  <span class="op">project =</span> <span class="st">"MyProject"</span>,
-  <span class="op">min.cells =</span> <span class="nm">3</span>,     <span class="cm"># 基因至少出現在 3 個細胞</span>
-  <span class="op">min.features =</span> <span class="nm">200</span>  <span class="cm"># 細胞至少有 200 個基因</span>
-)
-
-<span class="cm"># 計算粒線體基因比例</span>
-seurat_obj[[<span class="st">"percent.mt"</span>]] <span class="op">&lt;-</span> <span class="fn">PercentageFeatureSet</span>(
-  seurat_obj, <span class="op">pattern =</span> <span class="st">"^MT-"</span>  <span class="cm"># 人類用 ^MT-，小鼠用 ^mt-</span>
-)
-
-<span class="cm"># 視覺化 QC 指標</span>
-<span class="fn">VlnPlot</span>(seurat_obj,
-  <span class="op">features =</span> <span class="fn">c</span>(<span class="st">"nFeature_RNA"</span>, <span class="st">"nCount_RNA"</span>, <span class="st">"percent.mt"</span>),
-  <span class="op">ncol =</span> <span class="nm">3</span>, <span class="op">pt.size =</span> <span class="nm">0</span>
-)
-
-<span class="cm"># 過濾低品質細胞</span>
-seurat_obj <span class="op">&lt;-</span> <span class="fn">subset</span>(seurat_obj,
-  <span class="op">subset =</span> nFeature_RNA <span class="op">&gt;</span> <span class="nm">200</span> <span class="op">&amp;</span>
-           nFeature_RNA <span class="op">&lt;</span> <span class="nm">4000</span> <span class="op">&amp;</span>
-           percent.mt   <span class="op">&lt;</span> <span class="nm">10</span>
-)
-
-<span class="cm"># 確認過濾後的細胞數量</span>
-<span class="fn">cat</span>(<span class="st">"保留細胞數："</span>, <span class="fn">ncol</span>(seurat_obj), <span class="st">"\n"</span>)</pre>
-        </div>
+      <div class="dt-node">
+        <span class="dt-q">Q2:</span>
+        <div>你的組織有特殊 MT% 特徵嗎？（如心肌細胞 MT% 天然偏高）<span class="dt-arrow">→ 是 →</span> <strong>不要</strong>套用通用的 5% 閾值，需根據組織背景調高。</div>
       </div>
-      <div data-panel="t2" class="tab-panel">
-        <div class="code-wrap">
-          <div class="code-header">
-            <span class="lang-tag">◆ R · DoubletFinder</span>
-            <button class="copy-btn">Copy</button>
-          </div>
-          <pre><span class="cm"># 安裝與載入 DoubletFinder</span>
-<span class="cm"># remotes::install_github("chris-mcginnis-ucsf/DoubletFinder")</span>
-<span class="kw">library</span>(DoubletFinder)
-
-<span class="cm"># 先進行標準前處理（詳見後續步驟）</span>
-seurat_obj <span class="op">&lt;-</span> seurat_obj <span class="op">|&gt;</span>
-  <span class="fn">NormalizeData</span>() <span class="op">|&gt;</span>
-  <span class="fn">FindVariableFeatures</span>() <span class="op">|&gt;</span>
-  <span class="fn">ScaleData</span>() <span class="op">|&gt;</span>
-  <span class="fn">RunPCA</span>() <span class="op">|&gt;</span>
-  <span class="fn">RunUMAP</span>(<span class="op">dims =</span> <span class="nm">1</span><span class="op">:</span><span class="nm">20</span>)
-
-<span class="cm"># 參數掃描：找最佳 pK 值</span>
-sweep_res <span class="op">&lt;-</span> <span class="fn">paramSweep</span>(seurat_obj, <span class="op">PCs =</span> <span class="nm">1</span><span class="op">:</span><span class="nm">20</span>, <span class="op">sct =</span> <span class="kw">FALSE</span>)
-sweep_stats <span class="op">&lt;-</span> <span class="fn">summarizeSweep</span>(sweep_res, <span class="op">GT =</span> <span class="kw">FALSE</span>)
-pk_val <span class="op">&lt;-</span> <span class="fn">find.pK</span>(sweep_stats)
-optimal_pK <span class="op">&lt;-</span> <span class="fn">as.numeric</span>(<span class="kw">as.character</span>(pk_val$pK[<span class="fn">which.max</span>(pk_val$BCmetric)]))
-
-<span class="cm"># 預估 doublet 比例（依據 10x 官方表格）</span>
-nExp <span class="op">&lt;-</span> <span class="fn">round</span>(<span class="nm">0.075</span> <span class="op">*</span> <span class="fn">nrow</span>(seurat_obj@meta.data))
-
-<span class="cm"># 執行 DoubletFinder</span>
-seurat_obj <span class="op">&lt;-</span> <span class="fn">doubletFinder</span>(seurat_obj,
-  <span class="op">PCs =</span> <span class="nm">1</span><span class="op">:</span><span class="nm">20</span>, <span class="op">pN =</span> <span class="nm">0.25</span>,
-  <span class="op">pK =</span> optimal_pK, <span class="op">nExp =</span> nExp, <span class="op">reuse.pANN =</span> <span class="kw">FALSE</span>, <span class="op">sct =</span> <span class="kw">FALSE</span>
-)
-
-<span class="cm"># 移除 doublets</span>
-df_col <span class="op">&lt;-</span> <span class="fn">grep</span>(<span class="st">"DF.classification"</span>, <span class="fn">colnames</span>(seurat_obj@meta.data), <span class="op">value =</span> <span class="kw">TRUE</span>)
-seurat_obj <span class="op">&lt;-</span> <span class="fn">subset</span>(seurat_obj, cells = <span class="fn">rownames</span>(seurat_obj@meta.data[seurat_obj@meta.data[[df_col]] <span class="op">==</span> <span class="st">"Singlet"</span>,]))
-<span class="fn">cat</span>(<span class="st">"移除 doublets 後："</span>, <span class="fn">ncol</span>(seurat_obj), <span class="st">"個細胞\n"</span>)</pre>
-        </div>
+      <div class="dt-node">
+        <span class="dt-q">Q3:</span>
+        <div>是否關注稀有細胞群？ <span class="dt-arrow">→ 是 →</span> 建議<strong>寧可寬鬆</strong>；過嚴的過濾可能將靜止期 / 小型細胞誤判為低品質而移除。</div>
       </div>
-      <div data-panel="t3" class="tab-panel">
-        <div class="code-wrap">
-          <div class="code-header">
-            <span class="lang-tag">◆ R · SoupX</span>
-            <button class="copy-btn">Copy</button>
-          </div>
-          <pre><span class="cm"># 安裝：install.packages("SoupX")</span>
-<span class="kw">library</span>(SoupX)
-
-<span class="cm"># 讀取 10x 原始輸出（需 raw + filtered 兩個資料夾）</span>
-sc <span class="op">&lt;-</span> <span class="fn">load10X</span>(<span class="st">"path/to/10x_output/"</span>)
-
-<span class="cm"># 自動估計環境 RNA 污染率</span>
-sc <span class="op">&lt;-</span> <span class="fn">autoEstCont</span>(sc)
-
-<span class="cm"># 查看估計的污染率</span>
-<span class="fn">cat</span>(<span class="st">"估計污染率："</span>, sc$fit$rhoEst <span class="op">*</span> <span class="nm">100</span>, <span class="st">"%\n"</span>)
-
-<span class="cm"># 校正矩陣</span>
-out <span class="op">&lt;-</span> <span class="fn">adjustCounts</span>(sc, <span class="op">roundToInt =</span> <span class="kw">TRUE</span>)
-
-<span class="cm"># 用校正後的矩陣建立 Seurat 物件</span>
-seurat_obj <span class="op">&lt;-</span> <span class="fn">CreateSeuratObject</span>(
-  <span class="op">counts =</span> out,
-  <span class="op">project =</span> <span class="st">"SoupX_corrected"</span>
-)</pre>
-        </div>
+      <div class="dt-node">
+        <span class="dt-q">Q4:</span>
+        <div>初次分析？ <span class="dt-arrow">→ 是 →</span> 先用寬鬆閾值做初步分群，如果發現某 cluster 全是高 MT% 且無特異 marker，再回頭收緊。</div>
       </div>
     </div>
-  </div>
 
-  <!-- ADVANCED QC TABLE -->
-  <div class="section fade-up">
-    <div class="section-title">QC 策略比較</div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr><th>策略</th><th>固定閾值（傳統）</th><th>自適應閾值（最佳實踐）</th></tr>
-        </thead>
-        <tbody>
-          <tr><td><strong>概念</strong></td><td class="td-yellow">主觀的固定數值（如 MT% &lt; 5%）</td><td class="td-green">根據資料分佈決定（Data-driven）</td></tr>
-          <tr><td><strong>方法</strong></td><td>文獻經驗值</td><td>絕對中位差（MAD）：中位數 ± 3×MAD</td></tr>
-          <tr><td><strong>R 函數</strong></td><td><code>subset(obj, percent.mt &lt; 5)</code></td><td><code>scater::isOutlier()</code></td></tr>
-          <tr><td><strong>缺點</strong></td><td class="td-red">多樣本或特殊組織容易出錯</td><td class="td-green">對不同樣本品質差異具強健性</td></tr>
-        </tbody>
-      </table>
+    <table class="comp-table">
+      <thead>
+        <tr><th>策略</th><th>固定閾值（傳統）</th><th>自適應閾值（推薦）</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><strong>概念</strong></td><td>使用經驗數值，如 MT% &lt; 5%</td><td>基於數據分佈自動決定</td></tr>
+        <tr><td><strong>常見做法</strong></td><td>文獻常規值</td><td>中位數 ± 3 × MAD</td></tr>
+        <tr><td><strong>代表工具</strong></td><td>Seurat 手動設定</td><td>scater <code>isOutlier()</code></td></tr>
+        <tr><td><strong>適用情境</strong></td><td>單樣本、快速探索</td><td>多樣本整合、正式分析</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== Section 7: Code ===== -->
+  <section class="section">
+    <div class="section-label">程式碼</div>
+    <h2>QC 實作範例</h2>
+
+    <div class="code-tabs">
+      <div class="code-tab-btns">
+        <button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button>
+        <button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button>
+      </div>
+      <div class="code-tab-content active" id="r1"><pre><span class="comment"># 讀入 10X 數據</span>
+<span class="func">library</span>(Seurat)
+pbmc.data &lt;- <span class="func">Read10X</span>(data.dir = <span class="str">"filtered_feature_bc_matrix/"</span>)
+pbmc &lt;- <span class="func">CreateSeuratObject</span>(counts = pbmc.data, min.cells = <span class="num">3</span>, min.features = <span class="num">200</span>)
+
+<span class="comment"># 計算 MT%</span>
+pbmc[[<span class="str">"percent.mt"</span>]] &lt;- <span class="func">PercentageFeatureSet</span>(pbmc, pattern = <span class="str">"^MT-"</span>)
+
+<span class="comment"># 視覺化 QC 指標（先觀察再決定閾值！）</span>
+<span class="func">VlnPlot</span>(pbmc, features = <span class="func">c</span>(<span class="str">"nFeature_RNA"</span>, <span class="str">"nCount_RNA"</span>, <span class="str">"percent.mt"</span>), ncol = <span class="num">3</span>)
+
+<span class="comment"># 過濾（依觀察結果調整數值）</span>
+pbmc &lt;- <span class="func">subset</span>(pbmc,
+  subset = nFeature_RNA &gt; <span class="num">200</span> &amp; nFeature_RNA &lt; <span class="num">4000</span> &amp; percent.mt &lt; <span class="num">10</span>
+)</pre></div>
+      <div class="code-tab-content" id="py1"><pre><span class="kw">import</span> scanpy <span class="kw">as</span> sc
+
+<span class="comment"># 讀入數據</span>
+adata = sc.read_10x_mtx(<span class="str">"filtered_feature_bc_matrix/"</span>, var_names=<span class="str">"gene_symbols"</span>)
+
+<span class="comment"># 基因層級過濾：至少在 3 個細胞中表達</span>
+sc.pp.filter_genes(adata, min_cells=<span class="num">3</span>)
+
+<span class="comment"># 計算 QC 指標</span>
+adata.var[<span class="str">"mt"</span>] = adata.var_names.str.startswith(<span class="str">"MT-"</span>)
+sc.pp.calculate_qc_metrics(adata, qc_vars=[<span class="str">"mt"</span>], inplace=<span class="kw">True</span>)
+
+<span class="comment"># 視覺化（先觀察！）</span>
+sc.pl.violin(adata, [<span class="str">"n_genes_by_counts"</span>, <span class="str">"total_counts"</span>, <span class="str">"pct_counts_mt"</span>])
+
+<span class="comment"># 過濾</span>
+adata = adata[adata.obs[<span class="str">"n_genes_by_counts"</span>] &gt; <span class="num">200</span>]
+adata = adata[adata.obs[<span class="str">"n_genes_by_counts"</span>] &lt; <span class="num">4000</span>]
+adata = adata[adata.obs[<span class="str">"pct_counts_mt"</span>] &lt; <span class="num">10</span>]</pre></div>
     </div>
-  </div>
 
-  <!-- CALLOUTS -->
-  <div class="section fade-up">
-    <div class="callout callout-tip">
-      <div class="callout-title">💡 核心建議</div>
-      <p>沒有放諸四海皆準的閾值。心肌細胞的粒線體比例天然偏高，血液樣本要額外過濾紅血球基因（HBA, HBB）。永遠先看小提琴圖與散佈圖，再決定閾值。</p>
+    <div class="callout warn">
+      <span class="callout-icon">⚠️</span>
+      <div><strong>先看圖再設閾值！</strong>上面的數字（200 / 4000 / 10%）只是示範。實際分析時務必先執行 <code>VlnPlot</code> 或 <code>sc.pl.violin</code> 觀察數據分佈後再決定。</div>
     </div>
-    <div class="callout callout-warn">
-      <div class="callout-title">⚠️ 避免 Over-filtering</div>
-      <p>過嚴的過濾可能把靜止期細胞或罕見亞群一起濾掉。建議先寬鬆過濾、分群後，若發現某 cluster 指標異常再回頭移除。QC 是迭代過程。</p>
+  </section>
+
+  <!-- ===== Section 8: Quiz ===== -->
+  <section class="quiz-section">
+    <h3>📝 自我檢測</h3>
+    <div class="quiz-q" data-answer="2">
+      <p>1. 某細胞的 nFeature_RNA 極高、nCount_RNA 也極高，最可能的原因是？</p>
+      <div class="quiz-options">
+        <div class="quiz-opt" data-idx="0">A. 該細胞正在大量轉錄基因</div>
+        <div class="quiz-opt" data-idx="1">B. 定序深度特別深的正常細胞</div>
+        <div class="quiz-opt" data-idx="2">C. 可能是 doublet（雙細胞）</div>
+        <div class="quiz-opt" data-idx="3">D. 粒線體基因佔比過高</div>
+      </div>
+      <div class="quiz-feedback" id="fb1"></div>
     </div>
-  </div>
+    <div class="quiz-q" data-answer="1">
+      <p>2. 你正在分析心肌組織的 scRNA-seq 數據，發現大量細胞的 MT% 介於 8–15%。最佳做法是？</p>
+      <div class="quiz-options">
+        <div class="quiz-opt" data-idx="0">A. 仍然使用 5% 作為閾值，嚴格過濾</div>
+        <div class="quiz-opt" data-idx="1">B. 根據組織特性調高閾值，因為心肌細胞粒線體含量天然偏高</div>
+        <div class="quiz-opt" data-idx="2">C. 移除所有 MT 相關基因，問題就解決了</div>
+        <div class="quiz-opt" data-idx="3">D. 不需要做 QC，直接進入下游分析</div>
+      </div>
+      <div class="quiz-feedback" id="fb2"></div>
+    </div>
+  </section>
 
-  <!-- QUIZ -->
-  <div class="section fade-up">
-    <div class="section-title">知識測驗</div>
-    <div id="quiz-container"></div>
-  </div>
-
-  <div class="page-nav">
-    <a class="page-nav-btn prev" href="index.html">
-      <div class="nav-btn-arrow">←</div>
-      <div><div class="nav-btn-meta">上一頁</div><div class="nav-btn-title">Overview</div></div>
+  <!-- ===== Prev / Next ===== -->
+  <nav class="page-nav">
+    <div class="placeholder"></div>
+    <a href="normalization.html">
+      <span class="nav-dir">下一步 →</span>
+      <span class="nav-title">Step 2：標準化 (Normalization)</span>
     </a>
-    <a class="page-nav-btn" href="normalization.html">
-      <div><div class="nav-btn-meta">下一步 Step 02</div><div class="nav-btn-title">Normalization</div></div>
-      <div class="nav-btn-arrow">→</div>
-    </a>
-  </div>
-</div>
+  </nav>
 
-<footer>© Charlene — scRNA-seq Interactive Tutorial Hub</footer>
-<script src="shared.js"></script>
+</main>
+
+<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+
 <script>
-// QC Simulator
-const canvas = document.getElementById('qc-canvas');
-const ctx = canvas.getContext('2d');
-canvas.width = canvas.offsetWidth * devicePixelRatio || 400;
-canvas.height = 280 * devicePixelRatio || 280;
-ctx.scale(devicePixelRatio || 1, devicePixelRatio || 1);
-const W = 380, H = 260;
-
-// Generate mock cell data
-const cells = [];
-for (let i = 0; i < 1000; i++) {
-  const t = Math.random();
-  let nCount, nFeature, mt;
-  if (t < 0.07) { nCount = 200 + Math.random()*300; nFeature = 50 + Math.random()*150; mt = 5+Math.random()*30; } // dead
-  else if (t < 0.12) { nCount = 8000+Math.random()*6000; nFeature = 4500+Math.random()*3000; mt = 1+Math.random()*5; } // doublet
-  else { nCount = 500+Math.random()*5000; nFeature = 200+Math.random()*4000*(0.5+0.5*Math.random()); mt = 1+Math.random()*15; }
-  cells.push({nCount, nFeature, mt});
-}
-
-function drawPlot() {
-  const minF = +document.getElementById('s-minf').value;
-  const maxF = +document.getElementById('s-maxf').value;
-  const maxMt= +document.getElementById('s-mt').value;
-  document.getElementById('v-minf').textContent = minF;
-  document.getElementById('v-maxf').textContent = maxF;
-  document.getElementById('v-mt').textContent = maxMt;
-
-  ctx.clearRect(0, 0, W+20, H+20);
-  ctx.fillStyle = '#0f1525';
-  ctx.fillRect(0, 0, W, H);
-
-  // Grid
-  ctx.strokeStyle = '#1a2340'; ctx.lineWidth = 1;
-  for (let x=40; x<W; x+=60) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,H); ctx.stroke(); }
-  for (let y=30; y<H; y+=50) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(W,y); ctx.stroke(); }
-
-  let pass = 0, fail = 0;
-  const maxC = 14000, maxFt = 8000;
-  cells.forEach(c => {
-    const x = (c.nCount / maxC) * (W - 40) + 20;
-    const y = H - ((c.nFeature / maxFt) * (H - 30) + 10);
-    const ok = c.nFeature > minF && c.nFeature < maxF && c.mt < maxMt;
-    if (ok) pass++; else fail++;
-    ctx.beginPath();
-    ctx.arc(x, y, 2.5, 0, Math.PI*2);
-    ctx.fillStyle = ok ? 'rgba(77,255,145,0.7)' : 'rgba(255,82,82,0.5)';
-    ctx.fill();
-  });
-
-  // Threshold lines
-  ctx.setLineDash([4,4]);
-  ctx.strokeStyle = 'rgba(0,212,200,0.6)'; ctx.lineWidth = 1.5;
-  const yMin = H - ((minF / maxFt) * (H - 30) + 10);
-  const yMax = H - ((maxF / maxFt) * (H - 30) + 10);
-  ctx.beginPath(); ctx.moveTo(20, yMin); ctx.lineTo(W-10, yMin); ctx.stroke();
-  ctx.beginPath(); ctx.moveTo(20, yMax); ctx.lineTo(W-10, yMax); ctx.stroke();
-  ctx.setLineDash([]);
-
-  // Labels
-  ctx.fillStyle = '#6880a8'; ctx.font = '10px monospace';
-  ctx.fillText('nCount_RNA →', W-100, H-4);
-  ctx.save(); ctx.translate(10, H/2); ctx.rotate(-Math.PI/2);
-  ctx.fillText('nFeature_RNA →', -40, 0); ctx.restore();
-
-  document.getElementById('st-pass').textContent = pass;
-  document.getElementById('st-fail').textContent = fail;
-}
-
-['s-minf','s-maxf','s-mt'].forEach(id => document.getElementById(id).addEventListener('input', drawPlot));
-drawPlot();
-
-// Tabs
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelector(`[data-panel="${btn.dataset.tab}"]`).classList.add('active');
-  });
+// ---- Progress Bar ----
+window.addEventListener('scroll', () => {
+  const h = document.documentElement;
+  const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+  document.getElementById('progressBar').style.width = pct + '%';
 });
 
-// Quiz
-initQuiz([
-  { q: '當一個細胞的 nFeature_RNA 非常高（如 > 5000），最可能的原因是？',
-    opts: ['細胞非常健康活躍', '可能是雙細胞 (doublet)', '粒線體污染', '測序深度不足'],
-    ans: 1, explain: ' 高 nFeature 通常代表兩個細胞被包在同一液滴中。' },
-  { q: '心肌細胞樣本的 percent.mt 閾值，通常應比一般細胞如何設定？',
-    opts: ['設更低（如 < 5%）', '完全不需要過濾', '設更高（如 20–40%）', '使用預設 10%'],
-    ans: 2, explain: ' 心肌細胞天然含有大量粒線體，MT% 本來就偏高，過嚴會誤刪正常細胞。' },
-  { q: 'SoupX 主要用來處理哪種 QC 問題？',
-    opts: ['雙細胞偵測', '環境 RNA 污染（Ambient RNA）', '低品質細胞過濾', '批次效應校正'],
-    ans: 1, explain: ' SoupX 估計並校正破裂細胞釋放到懸浮液中的環境 RNA。' },
-]);
+// ---- Code Tabs ----
+function switchTab(btn, id) {
+  const parent = btn.closest('.code-tabs');
+  parent.querySelectorAll('.code-tab-btn').forEach(b => b.classList.remove('active'));
+  parent.querySelectorAll('.code-tab-content').forEach(c => c.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(id).classList.add('active');
+}
+
+// ---- QC Scatter Sim ----
+function generateCells(n) {
+  const cells = [];
+  for (let i = 0; i < n; i++) {
+    const isLow = Math.random() < 0.08;
+    const isDoublet = Math.random() < 0.06;
+    const isDead = Math.random() < 0.1;
+    let nCount, nFeature, mt;
+    if (isLow) {
+      nCount = 200 + Math.random() * 800;
+      nFeature = 50 + Math.random() * 180;
+      mt = 2 + Math.random() * 15;
+    } else if (isDoublet) {
+      nCount = 12000 + Math.random() * 18000;
+      nFeature = 3500 + Math.random() * 3500;
+      mt = 1 + Math.random() * 6;
+    } else if (isDead) {
+      nCount = 1000 + Math.random() * 5000;
+      nFeature = 300 + Math.random() * 1500;
+      mt = 12 + Math.random() * 18;
+    } else {
+      nCount = 1500 + Math.random() * 12000;
+      nFeature = 400 + Math.random() * 3200;
+      mt = 1 + Math.random() * 7;
+    }
+    cells.push({ nCount, nFeature, mt });
+  }
+  return cells;
+}
+
+const cells = generateCells(800);
+const ctx = document.getElementById('qcChart').getContext('2d');
+
+let qcChart;
+function renderChart() {
+  const minF = +document.getElementById('sliderMinFeat').value;
+  const maxF = +document.getElementById('sliderMaxFeat').value;
+  const maxMT = +document.getElementById('sliderMT').value;
+  document.getElementById('valMinFeat').textContent = minF;
+  document.getElementById('valMaxFeat').textContent = maxF;
+  document.getElementById('valMT').textContent = maxMT + '%';
+
+  const pass = [], fail = [];
+  cells.forEach(c => {
+    const ok = c.nFeature >= minF && c.nFeature <= maxF && c.mt <= maxMT;
+    const pt = { x: c.nCount, y: c.nFeature, r: Math.max(3, c.mt * 0.6) };
+    (ok ? pass : fail).push(pt);
+  });
+
+  document.getElementById('statPass').textContent = '保留: ' + pass.length;
+  document.getElementById('statFail').textContent = '剔除: ' + fail.length;
+
+  if (qcChart) qcChart.destroy();
+  qcChart = new Chart(ctx, {
+    type: 'bubble',
+    data: {
+      datasets: [
+        { label: '通過 QC', data: pass, backgroundColor: 'rgba(26,107,90,0.55)', borderColor: 'rgba(26,107,90,0.8)', borderWidth: 1 },
+        { label: '被剔除', data: fail, backgroundColor: 'rgba(192,57,43,0.45)', borderColor: 'rgba(192,57,43,0.7)', borderWidth: 1 }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'top', labels: { font: { family: 'DM Sans' } } } },
+      scales: {
+        x: { title: { display: true, text: 'nCount_RNA', font: { family: 'DM Sans' } }, min: 0, max: 32000 },
+        y: { title: { display: true, text: 'nFeature_RNA', font: { family: 'DM Sans' } }, min: 0, max: 7500 }
+      }
+    }
+  });
+}
+
+['sliderMinFeat','sliderMaxFeat','sliderMT'].forEach(id =>
+  document.getElementById(id).addEventListener('input', renderChart)
+);
+renderChart();
+
+// ---- Quiz ----
+document.querySelectorAll('.quiz-q').forEach((q, qi) => {
+  const answer = +q.dataset.answer;
+  const fb = document.getElementById('fb' + (qi + 1));
+  q.querySelectorAll('.quiz-opt').forEach(opt => {
+    opt.addEventListener('click', () => {
+      if (q.classList.contains('answered')) return;
+      q.classList.add('answered');
+      const idx = +opt.dataset.idx;
+      if (idx === answer) {
+        opt.classList.add('correct');
+        fb.className = 'quiz-feedback show correct-fb';
+        fb.textContent = '✅ 正確！' + (qi === 0
+          ? ' nFeature 與 nCount 同時異常偏高，是 doublet 的典型特徵。'
+          : ' 不同組織的 MT% 基線不同，必須根據生物背景調整閾值。');
+      } else {
+        opt.classList.add('wrong');
+        q.querySelectorAll('.quiz-opt')[answer].classList.add('correct');
+        fb.className = 'quiz-feedback show wrong-fb';
+        fb.textContent = '❌ 再想想！正確答案已標示為綠色。';
+      }
+    });
+  });
+});
 </script>
 </body>
 </html>
