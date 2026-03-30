@@ -57,7 +57,18 @@ adata = adata[:, adata.var.highly_variable]</pre></div></div></section>
 </main><footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script><script>
 window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-const genes=[];for(let i=0;i<3000;i++){const m=Math.random()*5;const bv=m*0.3+Math.random()*0.5;genes.push({mean:m,variance:Math.random()<0.25?bv+1.5+Math.random()*3:bv});}genes.sort((a,b)=>b.variance-a.variance);
+function randn2(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
+const genes=[];for(let i=0;i<3000;i++){
+  // Mean: log-normal-ish distribution (more genes at low expression)
+  const m=Math.exp(Math.random()*3.5-1.5); // range ~0.2 to ~8
+  // Baseline variance follows mean (Poisson-like floor) + technical noise
+  const baseVar=m*0.15+0.1+Math.abs(randn2()*0.15);
+  // Some genes have extra biological variance (HVGs)
+  const bioVar=Math.random()<0.2? Math.abs(randn2())*1.5+0.8 : Math.abs(randn2()*0.2);
+  const variance=baseVar+bioVar;
+  genes.push({mean:Math.min(m,8),variance:Math.min(variance,6)});
+}
+genes.sort((a,b)=>b.variance-a.variance);
 const hvgChart=new Chart(document.getElementById('hvgChart'),{type:'scatter',data:{datasets:[{label:'HVG',data:[],backgroundColor:'rgba(192,57,43,0.5)',pointRadius:3},{label:'Non-HVG',data:[],backgroundColor:'rgba(180,180,170,0.3)',pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{title:{display:true,text:'Mean Expression'}},y:{title:{display:true,text:'Variance'}}},plugins:{legend:{position:'top'}}}});
 function upHVG(){const n=+document.getElementById('sliderHVG').value;document.getElementById('valHVG').textContent=n;const s=[],r=[];genes.forEach((g,i)=>{(i<n?s:r).push({x:g.mean,y:g.variance});});hvgChart.data.datasets[0].data=s;hvgChart.data.datasets[1].data=r;hvgChart.update('none');}
 document.getElementById('sliderHVG').addEventListener('input',upHVG);upHVG();

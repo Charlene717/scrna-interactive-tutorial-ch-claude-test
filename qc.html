@@ -301,13 +301,29 @@ window.addEventListener('scroll',()=>{const h=document.documentElement;document.
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
 
 // QC scatter sim — generate once, update in-place
+// Box-Muller for gaussian random
+function randn(){let u=0,v=0;while(u===0)u=Math.random();while(v===0)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);}
 const cells=[];
 for(let i=0;i<800;i++){
   const r=Math.random();let nC,nF,mt;
-  if(r<0.08){nC=200+Math.random()*800;nF=50+Math.random()*180;mt=2+Math.random()*15;}
-  else if(r<0.14){nC=12000+Math.random()*18000;nF=3500+Math.random()*3500;mt=1+Math.random()*6;}
-  else if(r<0.24){nC=1000+Math.random()*5000;nF=300+Math.random()*1500;mt=12+Math.random()*18;}
-  else{nC=1500+Math.random()*12000;nF=400+Math.random()*3200;mt=1+Math.random()*7;}
+  if(r<0.08){ // empty droplets / debris — low counts, low features, variable MT
+    nC=Math.max(100, 500+randn()*250);
+    nF=Math.max(30, 120+randn()*60);
+    mt=Math.abs(5+randn()*6);
+  } else if(r<0.14){ // doublets — high counts, high features
+    nC=Math.max(8000, 15000+randn()*4000);
+    nF=Math.max(3000, 4500+randn()*800);
+    mt=Math.max(0.5, 3+randn()*1.5);
+  } else if(r<0.24){ // dead/dying cells — moderate counts, high MT
+    nC=Math.max(500, 3000+randn()*1500);
+    nF=Math.max(200, 800+randn()*400);
+    mt=Math.max(8, 18+randn()*5);
+  } else { // healthy cells — correlated nCount/nFeature along diagonal
+    const base=Math.random();
+    nC=Math.max(1000, 2000+base*10000+randn()*1500);
+    nF=Math.max(300, 500+base*2800+randn()*300);
+    mt=Math.max(0.3, 3+randn()*2);
+  }
   cells.push({nCount:nC,nFeature:nF,mt});
 }
 const qcChart=new Chart(document.getElementById('qcChart'),{type:'bubble',data:{datasets:[
