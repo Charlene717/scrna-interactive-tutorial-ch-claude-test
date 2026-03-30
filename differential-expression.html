@@ -1,30 +1,82 @@
-<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>STEP 9 / 9: Differential Expression (DE) — scRNA-seq Tutorial</title><link rel="stylesheet" href="styles.css"></head><body>
-<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html" class=active>DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-<header class="page-hero"><div class="step-badge">STEP 9 / 9</div><h1 data-i18n="title">差異表達分析 (DE)</h1><p class="subtitle" data-i18n="subtitle">比較群體間基因表達差異。</p></header>
-<main class="content-wrap"><section class="section"><div class="section-label" data-i18n="s1l">互動模擬</div><h2 data-i18n="s1t">火山圖 (Volcano Plot)</h2>
-<div class="interactive-panel"><div class="slider-group"><label>|log2FC| <span data-i18n="thr">閾值</span> <span id="valFC">0.5</span></label><input type="range" id="sliderFC" min="1" max="20" value="5" step="1"></div>
-<div class="slider-group"><label>-log10(p_adj) <span data-i18n="thr">閾值</span> <span id="valP">1.3</span></label><input type="range" id="sliderP" min="5" max="40" value="13" step="1"></div>
-<div class="sim-stats"><span class="sim-stat pass" id="statUp">Up: —</span><span class="sim-stat fail" id="statDn">Down: —</span><span class="sim-stat" id="statNS" style="background:var(--c-bg-alt);color:var(--c-ink-muted);">NS: —</span></div>
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>differential-expression — scRNA-seq Tutorial</title><link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="scRNA-seq 教學" data-en="scRNA-seq Tutorial">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html" class=active>DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+<header class="page-hero"><div class="step-badge">STEP 9 / 9</div><h1 data-zh="差異表達分析 (Differential Expression)" data-en="Differential Expression (DE)">差異表達分析</h1><p class="subtitle" data-lang="zh">比較不同 cluster 或 condition 的基因表達差異，找出 markers 與疾病訊號。</p><p class="subtitle" data-lang="en">Compare gene expression differences between clusters or conditions to find markers and disease signals.</p></header><main class="content-wrap">
+<section class="section"><div class="section-label" data-zh="兩種應用" data-en="TWO USE CASES">兩種應用</div><h2 data-zh="一、DE 分析的兩大情境" data-en="I. Two Major DE Scenarios">一、兩大情境</h2>
+<div class="card-grid cols-2"><div class="card"><div class="card-icon">🏷️</div><h4 data-zh="找 Marker Genes" data-en="Find Marker Genes">找 Markers</h4><div data-lang="zh"><p>比較某個 cluster 與其餘所有細胞，找出該 cluster 的特異性基因。這是<strong>細胞註釋</strong>的基礎。</p></div><div data-lang="en"><p>Compare one cluster vs. all other cells to find cluster-specific genes. This is the foundation for <strong>cell annotation</strong>.</p></div></div>
+<div class="card"><div class="card-icon">⚗️</div><h4 data-zh="跨條件比較" data-en="Cross-condition Comparison">跨條件比較</h4><div data-lang="zh"><p>比較同一種細胞在不同實驗條件下（如疾病 vs 健康、藥物 vs 對照）的表達差異。這是<strong>挖掘疾病機制</strong>的核心。</p></div><div data-lang="en"><p>Compare the same cell type under different conditions (disease vs. healthy, drug vs. control). This is the core of <strong>disease mechanism discovery</strong>.</p></div></div></div></section>
+
+<section class="section"><div class="section-label" data-zh="互動模擬" data-en="INTERACTIVE">互動模擬</div><h2 data-zh="二、火山圖 (Volcano Plot) 模擬器" data-en="II. Volcano Plot Simulator">二、火山圖模擬器</h2>
+<div data-lang="zh"><p>調整 log2FC 和 p-value 閾值，觀察有多少基因被判定為顯著差異。紅色=上調，藍色=下調，灰色=不顯著。</p></div><div data-lang="en"><p>Adjust log2FC and p-value thresholds. Red = upregulated, blue = downregulated, gray = not significant.</p></div>
+<div class="interactive-panel"><div class="slider-group"><label>|log2FC| <span data-zh="閾值" data-en="threshold">閾值</span> <span id="valFC">0.5</span></label><input type="range" id="sliderFC" min="1" max="20" value="5" step="1"></div>
+<div class="slider-group"><label>-log10(p_adj) <span data-zh="閾值" data-en="threshold">閾值</span> <span id="valP">1.3</span></label><input type="range" id="sliderP" min="5" max="40" value="13" step="1"></div>
+<div class="sim-stats"><span class="sim-stat pass" id="statUp">—</span><span class="sim-stat fail" id="statDn">—</span><span class="sim-stat" id="statNS" style="background:var(--c-bg-alt);color:var(--c-ink-muted);">—</span></div>
 <div class="chart-container" style="height:340px;"><canvas id="volChart"></canvas></div></div></section>
-<section class="section"><div class="section-label" data-i18n="s2l">程式碼</div><h2 data-i18n="s2t">實作範例</h2>
-<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python</button></div>
-<div class="code-tab-content active" id="r1"><pre>cluster0_markers &lt;- <span class="func">FindMarkers</span>(pbmc, ident.1=<span class="num">0</span>, only.pos=<span class="kw">TRUE</span>)
-<span class="comment"># Pseudobulk</span>
-pseudo &lt;- <span class="func">AggregateExpression</span>(pbmc, group.by=<span class="func">c</span>(<span class="str">"cell_type"</span>,<span class="str">"sample_id"</span>), return.seurat=<span class="kw">TRUE</span>)</pre></div>
-<div class="code-tab-content" id="py1"><pre>sc.tl.rank_genes_groups(adata, groupby=<span class="str">"leiden"</span>, method=<span class="str">"wilcoxon"</span>)</pre></div></div></section>
-<section class="quiz-section"><h3 data-i18n="quizTitle">📝 自我檢測</h3>
-<div class="quiz-q" data-answer="2"><p data-i18n="q1">跨條件比較為何不應直接對所有單細胞檢定？</p><div class="quiz-options">
-<div class="quiz-opt" data-idx="0" data-i18n="q1a">A. 計算太慢</div><div class="quiz-opt" data-idx="1" data-i18n="q1b">B. 無法處理零值</div><div class="quiz-opt" data-idx="2" data-i18n="q1c">C. 膨脹樣本量導致假陽性</div><div class="quiz-opt" data-idx="3" data-i18n="q1d">D. 不支援此功能</div>
-</div><div class="quiz-feedback" id="fb1"></div></div></section>
-<nav class="page-nav"><a href="annotation.html"><span class="nav-dir" data-i18n="_prev">← 上一步</span><span class="nav-title" data-i18n="_pt">Step 8：Annotation</span></a><a href="integration.html"><span class="nav-dir" data-i18n="_next">下一步 →</span><span class="nav-title" data-i18n="_nt">Integration</span></a></nav></main>
-<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script>
-<script>window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
-function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-I18n.registerTranslations({"zh": {"title": "差異表達分析 (DE)", "subtitle": "比較群體間基因表達差異。", "_prev": "← 上一步", "_pt": "Step 8：Annotation", "_next": "下一步 →", "_nt": "Integration", "s1l": "互動模擬", "s1t": "火山圖 (Volcano Plot)", "thr": "閾值", "s2l": "程式碼", "s2t": "實作範例", "q1": "跨條件比較為何不應直接對所有單細胞檢定？", "q1a": "A. 計算太慢", "q1b": "B. 無法處理零值", "q1c": "C. 膨脹樣本量導致假陽性", "q1d": "D. 不支援此功能"}, "en": {"title": "Differential Expression (DE)", "subtitle": "Compare gene expression between groups.", "_prev": "← Previous", "_pt": "Step 8: Annotation", "_next": "Next →", "_nt": "Integration", "s1l": "Interactive", "s1t": "Volcano Plot", "thr": "threshold", "s2l": "Code", "s2t": "Code examples", "q1": "Why not test all individual cells for cross-condition DE?", "q1a": "A. Too slow", "q1b": "B. Can't handle zeros", "q1c": "C. Inflates sample size → false positives", "q1d": "D. Not supported"}});
+
+<section class="section"><div class="section-label" data-zh="方法比較" data-en="METHODS">方法比較</div><h2 data-zh="三、主要 DE 檢定方法" data-en="III. Major DE Methods">三、DE 方法</h2>
+<table class="comp-table"><thead><tr><th data-zh="方法" data-en="Method">方法</th><th data-zh="說明" data-en="Description">說明</th><th data-zh="適用" data-en="Best For">適用</th></tr></thead><tbody>
+<tr><td><strong>Wilcoxon</strong></td><td data-lang="zh">非參數秩次檢定，簡單穩健</td><td data-lang="zh">找 cluster markers（快速）</td><td data-lang="en">Non-parametric rank test, simple and robust</td><td data-lang="en">Finding cluster markers (fast)</td></tr>
+<tr><td><strong>MAST</strong></td><td data-lang="zh">專為 scRNA-seq 設計的 hurdle model，處理零膨脹</td><td data-lang="zh">跨條件比較（單樣本）</td><td data-lang="en">Hurdle model designed for scRNA-seq, handles zero-inflation</td><td data-lang="en">Cross-condition (single sample)</td></tr>
+<tr><td><strong>Pseudobulk + DESeq2</strong></td><td data-lang="zh">先聚合同一樣本的細胞，再用 bulk 方法分析</td><td data-lang="zh"><strong>跨條件（目前最佳實踐）</strong></td><td data-lang="en">Aggregate cells per sample first, then apply bulk methods</td><td data-lang="en"><strong>Cross-condition (current best practice)</strong></td></tr>
+</tbody></table>
+
+<div class="decision-tree"><h4>🌳 <span data-zh="該選哪種方法？" data-en="Which method?">該選哪種？</span></h4>
+<div data-lang="zh">
+<div class="dt-node"><span class="dt-q">情境1:</span><div>找 cluster markers（註釋用）<span class="dt-arrow">→</span> <strong>Wilcoxon</strong>，快速且夠用。</div></div>
+<div class="dt-node"><span class="dt-q">情境2:</span><div>跨條件比較，有多個生物重複 <span class="dt-arrow">→</span> <strong>Pseudobulk + DESeq2</strong>（目前最佳實踐）。</div></div>
+<div class="dt-node"><span class="dt-q">情境3:</span><div>跨條件比較，但只有 1 個樣本 <span class="dt-arrow">→</span> <strong>MAST</strong>，但統計效力有限。</div></div>
+</div><div data-lang="en">
+<div class="dt-node"><span class="dt-q">Case 1:</span><div>Find cluster markers (for annotation) <span class="dt-arrow">→</span> <strong>Wilcoxon</strong>, fast and sufficient.</div></div>
+<div class="dt-node"><span class="dt-q">Case 2:</span><div>Cross-condition with biological replicates <span class="dt-arrow">→</span> <strong>Pseudobulk + DESeq2</strong> (current best practice).</div></div>
+<div class="dt-node"><span class="dt-q">Case 3:</span><div>Cross-condition, single sample <span class="dt-arrow">→</span> <strong>MAST</strong>, but limited power.</div></div>
+</div></div>
+
+<div class="callout danger"><span class="callout-icon">🚨</span><div>
+<span data-lang="zh"><strong>常見嚴重錯誤：</strong>直接用 <code>FindMarkers</code> 做跨條件比較（把每個細胞當獨立觀察值）。這會嚴重<strong>膨脹樣本量</strong>，產生大量假陽性。同一個體的所有細胞並非獨立觀察——正確做法是先做 <strong>pseudobulk 聚合</strong>，以生物重複為分析單位。</span>
+<span data-lang="en"><strong>Critical common error:</strong> Using <code>FindMarkers</code> directly for cross-condition comparison (treating each cell as independent). This severely <strong>inflates sample size</strong>, producing many false positives. Cells from the same individual are NOT independent — use <strong>pseudobulk aggregation</strong> with biological replicates as the analysis unit.</span>
+</div></div></section>
+
+<section class="section"><div class="section-label" data-zh="程式碼" data-en="CODE">程式碼</div><h2 data-zh="四、實作範例" data-en="IV. Code Examples">四、實作範例</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># 情境 1：找 Cluster 0 的 markers</span>
+cl0_markers &lt;- <span class="func">FindMarkers</span>(pbmc, ident.1 = <span class="num">0</span>, only.pos = <span class="kw">TRUE</span>)
+
+<span class="comment"># 情境 2：Pseudobulk 跨條件比較（正確做法）</span>
+pseudo &lt;- <span class="func">AggregateExpression</span>(pbmc,
+  group.by = <span class="func">c</span>(<span class="str">"cell_type"</span>, <span class="str">"sample_id"</span>),
+  return.seurat = <span class="kw">TRUE</span>)
+de &lt;- <span class="func">FindMarkers</span>(pseudo,
+  ident.1 = <span class="str">"disease"</span>, ident.2 = <span class="str">"control"</span>,
+  test.use = <span class="str">"DESeq2"</span>)
+
+<span class="comment"># 火山圖</span>
+<span class="func">library</span>(EnhancedVolcano)
+<span class="func">EnhancedVolcano</span>(de, lab = <span class="func">rownames</span>(de), x = <span class="str">"avg_log2FC"</span>, y = <span class="str">"p_val_adj"</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="comment"># 情境 1：找各 cluster markers</span>
+sc.tl.rank_genes_groups(adata, groupby=<span class="str">"leiden"</span>, method=<span class="str">"wilcoxon"</span>)
+sc.pl.rank_genes_groups(adata, n_genes=<span class="num">10</span>)
+
+<span class="comment"># 情境 2：Pseudobulk（推薦用 decoupler）</span>
+<span class="kw">import</span> decoupler <span class="kw">as</span> dc
+pdata = dc.get_pseudobulk(adata, sample_col=<span class="str">"sample_id"</span>,
+  groups_col=<span class="str">"cell_type"</span>, min_cells=<span class="num">10</span>)
+dc.deseq2(pdata, design=<span class="str">"~condition"</span>)</pre></div></div></section>
+
+<section class="quiz-section"><h3>📝 <span data-zh="自我檢測" data-en="Self-Check">自我檢測</span></h3>
+<div class="quiz-q" data-answer="2"><p data-lang="zh">跨條件比較為何不應直接對所有單細胞做檢定？</p><p data-lang="en">Why shouldn't you test all individual cells for cross-condition DE?</p><div class="quiz-options">
+<div class="quiz-opt" data-idx="0"><span data-lang="zh">A. 計算太慢</span><span data-lang="en">A. Too slow computationally</span></div>
+<div class="quiz-opt" data-idx="1"><span data-lang="zh">B. 無法處理零值</span><span data-lang="en">B. Can't handle zeros</span></div>
+<div class="quiz-opt" data-idx="2"><span data-lang="zh">C. 會把同一個體的多個細胞當獨立觀察，膨脹樣本量導致假陽性</span><span data-lang="en">C. Treats cells from same individual as independent, inflating sample size and false positives</span></div>
+<div class="quiz-opt" data-idx="3"><span data-lang="zh">D. Seurat 不支援此功能</span><span data-lang="en">D. Not supported by Seurat</span></div></div><div class="quiz-feedback" id="fb1"></div></div></section>
+<nav class="page-nav"><a href="annotation.html"><span class="nav-dir" data-zh="← 上一步" data-en="← Previous">← 上一步</span><span class="nav-title" data-zh="Step 8：Annotation" data-en="Step 8: Annotation">Step 8：Annotation</span></a><a href="integration.html"><span class="nav-dir" data-zh="下一步 →" data-en="Next →">下一步 →</span><span class="nav-title" data-zh="Integration" data-en="Integration">Integration</span></a></nav></main>
+<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script><script>
+window.addEventListener("scroll",()=>{const h=document.documentElement;document.getElementById("progressBar").style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+"%";});
+function switchTab(b,id){const p=b.closest(".code-tabs");p.querySelectorAll(".code-tab-btn").forEach(x=>x.classList.remove("active"));p.querySelectorAll(".code-tab-content").forEach(x=>x.classList.remove("active"));b.classList.add("active");document.getElementById(id).classList.add("active");}
+
 const vG=[];for(let i=0;i<500;i++){const fc=(Math.random()-0.5)*6;vG.push({fc,pv:Math.random()*5+Math.abs(fc)*Math.random()*2});}
 const volChart=new Chart(document.getElementById('volChart'),{type:'scatter',data:{datasets:[{label:'Up',data:[],backgroundColor:'rgba(192,57,43,0.5)',pointRadius:3},{label:'Down',data:[],backgroundColor:'rgba(41,128,185,0.5)',pointRadius:3},{label:'NS',data:[],backgroundColor:'rgba(180,180,170,0.3)',pointRadius:2.5}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{min:-4,max:4,title:{display:true,text:'log2FC'}},y:{min:0,max:8,title:{display:true,text:'-log10(p_adj)'}}},plugins:{legend:{position:'top'}}}});
-function upVol(){const fcT=+document.getElementById('sliderFC').value/10;const pT=+document.getElementById('sliderP').value/10;document.getElementById('valFC').textContent=fcT.toFixed(1);document.getElementById('valP').textContent=pT.toFixed(1);const u=[],d=[],ns=[];vG.forEach(g=>{const pt={x:g.fc,y:g.pv};if(g.pv>=pT&&g.fc>=fcT)u.push(pt);else if(g.pv>=pT&&g.fc<=-fcT)d.push(pt);else ns.push(pt);});const L=I18n.getLang();const ul=L==='zh'?'上調':'Up',dl=L==='zh'?'下調':'Down',nl=L==='zh'?'不顯著':'NS';document.getElementById('statUp').textContent=ul+': '+u.length;document.getElementById('statDn').textContent=dl+': '+d.length;document.getElementById('statNS').textContent=nl+': '+ns.length;volChart.data.datasets[0].data=u;volChart.data.datasets[1].data=d;volChart.data.datasets[2].data=ns;volChart.data.datasets[0].label=ul;volChart.data.datasets[1].label=dl;volChart.data.datasets[2].label=nl;volChart.update('none');}
+function upVol(){const fcT=+document.getElementById('sliderFC').value/10,pT=+document.getElementById('sliderP').value/10;document.getElementById('valFC').textContent=fcT.toFixed(1);document.getElementById('valP').textContent=pT.toFixed(1);const u=[],d=[],ns=[];vG.forEach(g=>{const pt={x:g.fc,y:g.pv};if(g.pv>=pT&&g.fc>=fcT)u.push(pt);else if(g.pv>=pT&&g.fc<=-fcT)d.push(pt);else ns.push(pt);});const L=I18n.get();const ul=L==='zh'?'上調':'Up',dl=L==='zh'?'下調':'Down',nl=L==='zh'?'不顯著':'NS';document.getElementById('statUp').textContent=ul+': '+u.length;document.getElementById('statDn').textContent=dl+': '+d.length;document.getElementById('statNS').textContent=nl+': '+ns.length;volChart.data.datasets[0].data=u;volChart.data.datasets[1].data=d;volChart.data.datasets[2].data=ns;volChart.data.datasets[0].label=ul;volChart.data.datasets[1].label=dl;volChart.data.datasets[2].label=nl;volChart.update('none');}
 ['sliderFC','sliderP'].forEach(id=>document.getElementById(id).addEventListener('input',upVol));document.addEventListener('langchange',upVol);upVol();
-window.QF={zh:{q1_y:'同一個體的細胞非獨立觀察值，需 pseudobulk。',q1_n:'答案是 C。'},en:{q1_y:'Cells from same individual are not independent; need pseudobulk.',q1_n:'Answer is C.'}};
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?'correct':'wrong');if(!ok)q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');const L=I18n.getLang();const F=window.QF||{};fb.className='quiz-feedback show '+(ok?'correct-fb':'wrong-fb');fb.textContent=(ok?'✅ ':'❌ ')+(F[L]&&F[L]['q'+(qi+1)+'_'+(ok?'y':'n')]||'');});});});</script></body></html>
+window._QF={zh:{q1_y:'同一個體的細胞並非獨立觀察值，必須先做 pseudobulk 聚合，以生物重複為分析單位。',q1_n:'答案是 C。這是 scRNA-seq DE 分析中最常見也最嚴重的統計陷阱。'},en:{q1_y:'Cells from the same individual are not independent observations. Must pseudobulk-aggregate first, using biological replicates as the unit of analysis.',q1_n:'Answer is C. This is the most common and serious statistical pitfall in scRNA-seq DE.'}};
+const QF=window._QF||{};document.querySelectorAll(".quiz-q").forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll(".quiz-opt").forEach(o=>{o.addEventListener("click",()=>{if(q.classList.contains("answered"))return;q.classList.add("answered");const fb=document.getElementById("fb"+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?"correct":"wrong");if(!ok)q.querySelectorAll(".quiz-opt")[ans].classList.add("correct");const L=I18n.get();fb.className="quiz-feedback show "+(ok?"correct-fb":"wrong-fb");fb.textContent=(ok?"✅ ":"❌ ")+(QF[L]&&QF[L]["q"+(qi+1)+"_"+(ok?"y":"n")]||"");});});});
+</script></body></html>

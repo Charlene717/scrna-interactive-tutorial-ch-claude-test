@@ -1,49 +1,37 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>scRNA-seq 互動式教學</title>
-  <meta name="description" content="中文/英文 scRNA-seq 單細胞 RNA 定序完整互動教學，12 個步驟帶你從原始數據到生物學結論。">
-  <meta property="og:title" content="scRNA-seq Interactive Tutorial">
-  <meta property="og:description" content="Complete bilingual scRNA-seq analysis tutorial with interactive simulations.">
-  <link rel="stylesheet" href="styles.css">
-</head>
-<body>
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>scRNA-seq Interactive Tutorial</title>
+<meta name="description" content="Complete bilingual scRNA-seq single-cell RNA-seq interactive tutorial.">
+<link rel="stylesheet" href="styles.css"></head><body>
 <nav class="top-nav"><div class="top-nav-inner">
-  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a>
+  <a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-zh="scRNA-seq 教學" data-en="scRNA-seq Tutorial">scRNA-seq 教學</span></a>
   <ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul>
 </div></nav>
-<header class="hub-hero">
-  <div style="position:relative;z-index:1;">
-    <h1 data-i18n="hub_title">scRNA-seq 互動式教學</h1>
-    <p data-i18n="hub_desc">從原始數據到生物學洞見——12 個步驟帶你掌握單細胞轉錄組分析的核心流程，搭配互動模擬與程式碼範例。</p>
-  </div>
-</header>
-<h2 class="hub-section-title"><span>01</span> <span data-i18n="hub_core">核心分析流程</span></h2>
+<header class="hub-hero"><div style="position:relative;z-index:1;">
+<h1 data-zh="scRNA-seq 互動式教學" data-en="scRNA-seq Interactive Tutorial">scRNA-seq 互動式教學</h1>
+<p data-lang="zh">從原始數據到生物學洞見——12 個步驟帶你掌握單細胞轉錄組分析的核心流程，搭配互動模擬與程式碼範例。</p>
+<p data-lang="en">From raw data to biological insights — master single-cell transcriptomics in 12 steps, with interactive simulations and code examples.</p>
+</div></header>
+
+<h2 class="hub-section-title"><span>01</span> <span data-zh="核心分析流程" data-en="Core Analysis Pipeline">核心分析流程</span></h2>
 <div class="hub-steps-grid">
-  <a href="qc.html" class="hub-card"><div class="hub-emoji">🧪</div><span class="step-num">Step 1</span><h3 data-i18n="hub_qc_t">品質管控 (QC)</h3><p data-i18n="hub_qc_d">根據 nFeature、nCount、MT% 過濾低品質細胞。</p></a>
-  <a href="normalization.html" class="hub-card"><div class="hub-emoji">⚖️</div><span class="step-num">Step 2</span><h3 data-i18n="hub_norm_t">標準化 (Normalization)</h3><p data-i18n="hub_norm_d">校正細胞間定序深度差異。</p></a>
-  <a href="variable-features.html" class="hub-card"><div class="hub-emoji">✨</div><span class="step-num">Step 3</span><h3 data-i18n="hub_hvg_t">高變異基因選擇</h3><p data-i18n="hub_hvg_d">挑選具有高生物變異的基因。</p></a>
-  <a href="scaling.html" class="hub-card"><div class="hub-emoji">📏</div><span class="step-num">Step 4</span><h3 data-i18n="hub_scale_t">縮放 (Scaling)</h3><p data-i18n="hub_scale_d">Z-score 標準化讓基因在相近尺度下進入分析。</p></a>
-  <a href="pca.html" class="hub-card"><div class="hub-emoji">📉</div><span class="step-num">Step 5</span><h3 data-i18n="hub_pca_t">主成分分析 (PCA)</h3><p data-i18n="hub_pca_d">壓縮基因維度，保留訊號、過濾噪音。</p></a>
-  <a href="clustering.html" class="hub-card"><div class="hub-emoji">🧩</div><span class="step-num">Step 6</span><h3 data-i18n="hub_cl_t">聚類 (Clustering)</h3><p data-i18n="hub_cl_d">建立近鄰圖辨識細胞族群。</p></a>
-  <a href="umap.html" class="hub-card"><div class="hub-emoji">🗺️</div><span class="step-num">Step 7</span><h3 data-i18n="hub_umap_t">UMAP 視覺化</h3><p data-i18n="hub_umap_d">將高維數據投影到 2D。</p></a>
-  <a href="annotation.html" class="hub-card"><div class="hub-emoji">🏷️</div><span class="step-num">Step 8</span><h3 data-i18n="hub_ann_t">細胞註釋 (Annotation)</h3><p data-i18n="hub_ann_d">利用 marker genes 標記細胞類型。</p></a>
-  <a href="differential-expression.html" class="hub-card"><div class="hub-emoji">🧾</div><span class="step-num">Step 9</span><h3 data-i18n="hub_de_t">差異表達分析 (DE)</h3><p data-i18n="hub_de_d">比較群體間基因表達差異。</p></a>
+  <a href="qc.html" class="hub-card"><div class="hub-emoji">🧪</div><span class="step-num">Step 1</span><h3 data-zh="品質管控 (QC)" data-en="Quality Control (QC)">品質管控 (QC)</h3><p data-lang="zh">根據 nFeature、nCount、MT% 過濾低品質細胞，移除空液滴與 doublets。</p><p data-lang="en">Filter low-quality cells by nFeature, nCount, MT%. Remove empty droplets and doublets.</p></a>
+  <a href="normalization.html" class="hub-card"><div class="hub-emoji">⚖️</div><span class="step-num">Step 2</span><h3 data-zh="標準化 (Normalization)" data-en="Normalization">標準化</h3><p data-lang="zh">校正細胞間定序深度差異，比較 LogNormalize、Scran 與 SCTransform。</p><p data-lang="en">Correct sequencing depth differences. Compare LogNormalize, Scran, and SCTransform.</p></a>
+  <a href="variable-features.html" class="hub-card"><div class="hub-emoji">✨</div><span class="step-num">Step 3</span><h3 data-zh="高變異基因選擇" data-en="Variable Features (HVGs)">高變異基因選擇</h3><p data-lang="zh">挑選具有高生物變異的基因，作為 PCA 與聚類的核心輸入特徵。</p><p data-lang="en">Select genes with highest biological variation as key input features for PCA and clustering.</p></a>
+  <a href="scaling.html" class="hub-card"><div class="hub-emoji">📏</div><span class="step-num">Step 4</span><h3 data-zh="縮放 (Scaling)" data-en="Scaling">縮放</h3><p data-lang="zh">Z-score 標準化讓基因在相近尺度下進入下游分析。</p><p data-lang="en">Z-score normalization gives every gene equal weight in downstream analysis.</p></a>
+  <a href="pca.html" class="hub-card"><div class="hub-emoji">📉</div><span class="step-num">Step 5</span><h3 data-zh="主成分分析 (PCA)" data-en="PCA">主成分分析</h3><p data-lang="zh">壓縮基因維度，保留關鍵變異、降低噪音。</p><p data-lang="en">Compress gene dimensions — retain key variation, reduce noise.</p></a>
+  <a href="clustering.html" class="hub-card"><div class="hub-emoji">🧩</div><span class="step-num">Step 6</span><h3 data-zh="聚類 (Clustering)" data-en="Clustering">聚類</h3><p data-lang="zh">在 PCA 空間中建立近鄰圖，以 Louvain/Leiden 辨識細胞族群。</p><p data-lang="en">Build neighbor graphs in PCA space. Identify cell populations via Louvain/Leiden.</p></a>
+  <a href="umap.html" class="hub-card"><div class="hub-emoji">🗺️</div><span class="step-num">Step 7</span><h3 data-zh="UMAP 視覺化" data-en="UMAP Visualization">UMAP 視覺化</h3><p data-lang="zh">將高維數據投影到 2D，觀察細胞群間的相對關係。</p><p data-lang="en">Project high-dimensional data to 2D to visualize cell population relationships.</p></a>
+  <a href="annotation.html" class="hub-card"><div class="hub-emoji">🏷️</div><span class="step-num">Step 8</span><h3 data-zh="細胞註釋 (Annotation)" data-en="Cell Annotation">細胞註釋</h3><p data-lang="zh">利用 marker genes 與參考數據集，為 cluster 指定細胞類型名稱。</p><p data-lang="en">Assign cell type identities to clusters using marker genes and reference datasets.</p></a>
+  <a href="differential-expression.html" class="hub-card"><div class="hub-emoji">🧾</div><span class="step-num">Step 9</span><h3 data-zh="差異表達分析 (DE)" data-en="Differential Expression (DE)">差異表達分析</h3><p data-lang="zh">比較不同 cluster 或 condition 間的基因表達差異。</p><p data-lang="en">Compare gene expression differences between clusters or conditions.</p></a>
 </div>
-<h2 class="hub-section-title"><span>02</span> <span data-i18n="hub_adv">進階分析主題</span></h2>
+
+<h2 class="hub-section-title"><span>02</span> <span data-zh="進階分析主題" data-en="Advanced Topics">進階分析主題</span></h2>
 <div class="hub-steps-grid">
-  <a href="integration.html" class="hub-card"><div class="hub-emoji">🔗</div><span class="step-num">Advanced</span><h3 data-i18n="hub_int_t">數據整合 (Integration)</h3><p data-i18n="hub_int_d">降低 batch effect，保留生物差異。</p></a>
-  <a href="cellchat.html" class="hub-card"><div class="hub-emoji">💬</div><span class="step-num">Advanced</span><h3 data-i18n="hub_cc_t">細胞通訊 (CellChat)</h3><p data-i18n="hub_cc_d">分析 ligand-receptor 交互作用。</p></a>
-  <a href="trajectory.html" class="hub-card"><div class="hub-emoji">🛤️</div><span class="step-num">Advanced</span><h3 data-i18n="hub_traj_t">軌跡分析 (Trajectory)</h3><p data-i18n="hub_traj_d">推估細胞狀態轉變路徑。</p></a>
+  <a href="integration.html" class="hub-card"><div class="hub-emoji">🔗</div><span class="step-num">Advanced</span><h3 data-zh="數據整合 (Integration)" data-en="Data Integration">數據整合</h3><p data-lang="zh">整合多樣本/多批次資料，降低 batch effect 並保留真實生物差異。</p><p data-lang="en">Integrate multi-sample/multi-batch data. Remove batch effects while preserving true biology.</p></a>
+  <a href="cellchat.html" class="hub-card"><div class="hub-emoji">💬</div><span class="step-num">Advanced</span><h3 data-zh="細胞通訊 (CellChat)" data-en="Cell-Cell Communication">細胞通訊</h3><p data-lang="zh">分析 ligand-receptor 交互作用，探索細胞間訊號傳遞與微環境調控。</p><p data-lang="en">Analyze ligand-receptor interactions. Explore intercellular signaling and microenvironment regulation.</p></a>
+  <a href="trajectory.html" class="hub-card"><div class="hub-emoji">🛤️</div><span class="step-num">Advanced</span><h3 data-zh="軌跡分析 (Trajectory)" data-en="Trajectory / Pseudotime">軌跡分析</h3><p data-lang="zh">推估細胞狀態轉變與發育路徑，適合分化或疾病進程研究。</p><p data-lang="en">Infer cell state transitions and developmental paths for differentiation or disease progression studies.</p></a>
 </div>
 <div style="height:60px"></div>
-<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
 <script src="i18n.js"></script>
-<script>
-I18n.registerTranslations({
-  zh:{hub_title:'scRNA-seq 互動式教學',hub_desc:'從原始數據到生物學洞見——12 個步驟帶你掌握單細胞轉錄組分析的核心流程，搭配互動模擬與程式碼範例。',hub_core:'核心分析流程',hub_adv:'進階分析主題',hub_qc_t:'品質管控 (QC)',hub_qc_d:'根據 nFeature、nCount、MT% 過濾低品質細胞。',hub_norm_t:'標準化 (Normalization)',hub_norm_d:'校正細胞間定序深度差異。',hub_hvg_t:'高變異基因選擇',hub_hvg_d:'挑選具有高生物變異的基因。',hub_scale_t:'縮放 (Scaling)',hub_scale_d:'Z-score 標準化讓基因在相近尺度下進入分析。',hub_pca_t:'主成分分析 (PCA)',hub_pca_d:'壓縮基因維度，保留訊號、過濾噪音。',hub_cl_t:'聚類 (Clustering)',hub_cl_d:'建立近鄰圖辨識細胞族群。',hub_umap_t:'UMAP 視覺化',hub_umap_d:'將高維數據投影到 2D。',hub_ann_t:'細胞註釋 (Annotation)',hub_ann_d:'利用 marker genes 標記細胞類型。',hub_de_t:'差異表達分析 (DE)',hub_de_d:'比較群體間基因表達差異。',hub_int_t:'數據整合 (Integration)',hub_int_d:'降低 batch effect，保留生物差異。',hub_cc_t:'細胞通訊 (CellChat)',hub_cc_d:'分析 ligand-receptor 交互作用。',hub_traj_t:'軌跡分析 (Trajectory)',hub_traj_d:'推估細胞狀態轉變路徑。'},
-  en:{hub_title:'scRNA-seq Interactive Tutorial',hub_desc:'From raw data to biological insights — 12 steps to master single-cell transcriptomics analysis, with interactive simulations and code examples.',hub_core:'Core Analysis Pipeline',hub_adv:'Advanced Topics',hub_qc_t:'Quality Control (QC)',hub_qc_d:'Filter low-quality cells by nFeature, nCount, MT%.',hub_norm_t:'Normalization',hub_norm_d:'Correct sequencing depth differences between cells.',hub_hvg_t:'Variable Features (HVGs)',hub_hvg_d:'Select genes with highest biological variation.',hub_scale_t:'Scaling',hub_scale_d:'Z-score normalization for equal gene weights in PCA.',hub_pca_t:'PCA',hub_pca_d:'Compress gene dimensions, retain signal, remove noise.',hub_cl_t:'Clustering',hub_cl_d:'Build neighbor graphs to identify cell populations.',hub_umap_t:'UMAP Visualization',hub_umap_d:'Project high-dimensional data to 2D.',hub_ann_t:'Cell Annotation',hub_ann_d:'Label clusters with cell type identities using markers.',hub_de_t:'Differential Expression (DE)',hub_de_d:'Compare gene expression across groups.',hub_int_t:'Data Integration',hub_int_d:'Remove batch effects, preserve biological differences.',hub_cc_t:'Cell-Cell Communication',hub_cc_d:'Analyze ligand-receptor interactions.',hub_traj_t:'Trajectory / Pseudotime',hub_traj_d:'Infer cell state transition paths.'}
-});
-</script>
 </body></html>
