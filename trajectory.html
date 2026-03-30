@@ -1,121 +1,39 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>軌跡分析 (Trajectory) — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
-<body>
-<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html" class="active">Trajectory</a></li></ul></div></nav>
-<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-<header class="page-hero"><div class="step-badge">ADVANCED</div><h1>軌跡分析 (Trajectory / Pseudotime)</h1><p class="subtitle">從靜態快照推估細胞狀態轉變的動態路徑。</p></header>
-<main class="content-wrap">
-  <section class="section"><div class="section-label">核心概念</div><h2>什麼是 Pseudotime？</h2>
-    <p>scRNA-seq 是一張「快照」。但因為細胞處於不同分化階段，可以利用表達漸變重建<span class="term">擬時序 (Pseudotime)<span class="term-tip">連續數值軸，代表細胞沿生物學過程的進展程度</span></span>。</p>
-    <div class="card-grid cols-2">
-      <div class="card"><div class="card-icon">🎯</div><h4>適用情境</h4><p>分化、免疫活化、疾病進程。</p></div>
-      <div class="card"><div class="card-icon">⚠️</div><h4>前提假設</h4><p>數據中<strong>必須存在不同狀態的細胞</strong>。</p></div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">互動模擬</div><h2>Pseudotime 與基因表達動態</h2>
-    <p>切換不同的著色模式，觀察 pseudotime 梯度與沿軌跡變化的基因表達。選擇基因觀察其沿 pseudotime 的表達趨勢。</p>
-    <div class="interactive-panel">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-        <button class="code-tab-btn" id="btn-pt" onclick="colorTraj('pt')" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 14px;">Pseudotime</button>
-        <button class="code-tab-btn" id="btn-cl" onclick="colorTraj('cl')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">Cluster</button>
-      </div>
-      <div class="chart-container" style="height:300px;"><canvas id="trajChart"></canvas></div>
-      <div style="margin-top:16px;">
-        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;">
-          <button class="code-tab-btn" id="gene-0" onclick="showGene(0)" style="background:var(--c-highlight);color:#fff;border-radius:6px;padding:6px 12px;font-size:0.82rem;">Stem marker</button>
-          <button class="code-tab-btn" id="gene-1" onclick="showGene(1)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:6px 12px;font-size:0.82rem;">Transition gene</button>
-          <button class="code-tab-btn" id="gene-2" onclick="showGene(2)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:6px 12px;font-size:0.82rem;">Terminal marker</button>
-        </div>
-        <div class="chart-container" style="height:200px;"><canvas id="geneChart"></canvas></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">方法比較</div><h2>主流工具</h2>
-    <table class="comp-table"><thead><tr><th>工具</th><th>核心邏輯</th><th>適用</th></tr></thead><tbody>
-      <tr><td><strong>Monocle3</strong></td><td>學習主圖</td><td>通用型，支援分支</td></tr>
-      <tr><td><strong>Slingshot</strong></td><td>擬合主曲線</td><td>線性/簡單分支</td></tr>
-      <tr><td><strong>RNA Velocity</strong></td><td>spliced/unspliced 比率</td><td>推斷方向</td></tr>
-      <tr><td><strong>PAGA</strong></td><td>圖抽象</td><td>大規模拓撲</td></tr>
-    </tbody></table>
-    <div class="decision-tree"><h4>🌳 我該用哪個？</h4>
-      <div class="dt-node"><span class="dt-q">想知道順序？</span><div><span class="dt-arrow">→</span> <strong>Monocle3</strong> 或 Slingshot。</div></div>
-      <div class="dt-node"><span class="dt-q">想知道方向？</span><div><span class="dt-arrow">→</span> <strong>RNA Velocity</strong>。</div></div>
-      <div class="dt-node"><span class="dt-q">大規模拓撲？</span><div><span class="dt-arrow">→</span> <strong>PAGA</strong>。</div></div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
-    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Monocle3</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / scVelo</button></div>
-      <div class="code-tab-content active" id="r1"><pre><span class="func">library</span>(monocle3)
-cds &lt;- <span class="func">as.cell_data_set</span>(pbmc)
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>ADVANCED: Trajectory / Pseudotime — scRNA-seq Tutorial</title><link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html" class=active>Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+<header class="page-hero"><div class="step-badge">ADVANCED</div><h1 data-i18n="title">軌跡分析 (Trajectory)</h1><p class="subtitle" data-i18n="subtitle">從靜態快照推估細胞狀態轉變路徑。</p></header>
+<main class="content-wrap"><section class="section"><div class="section-label" data-i18n="s1l">互動模擬</div><h2 data-i18n="s1t">Pseudotime 視覺化</h2>
+<div class="interactive-panel"><div class="toggle-row"><button class="toggle-btn active" id="btn-pt" onclick="colorT('pt')">Pseudotime</button><button class="toggle-btn" id="btn-cl" onclick="colorT('cl')">Cluster</button></div>
+<div class="chart-container" style="height:300px;"><canvas id="tChart"></canvas></div>
+<div style="margin-top:16px;"><div class="toggle-row"><button class="toggle-btn toggle-btn-sm active" id="gene-0" onclick="showG(0)"><span data-i18n="g0">Stem marker</span></button><button class="toggle-btn toggle-btn-sm" id="gene-1" onclick="showG(1)"><span data-i18n="g1">Transition</span></button><button class="toggle-btn toggle-btn-sm" id="gene-2" onclick="showG(2)"><span data-i18n="g2">Terminal marker</span></button></div>
+<div class="chart-container" style="height:200px;"><canvas id="gChart"></canvas></div></div></div></section>
+<section class="section"><div class="section-label" data-i18n="s2l">程式碼</div><h2 data-i18n="s2t">實作範例</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Monocle3</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / scVelo</button></div>
+<div class="code-tab-content active" id="r1"><pre>cds &lt;- <span class="func">as.cell_data_set</span>(pbmc)
 cds &lt;- <span class="func">learn_graph</span>(cds)
 cds &lt;- <span class="func">order_cells</span>(cds)
-<span class="func">plot_cells</span>(cds, color_cells_by = <span class="str">"pseudotime"</span>)</pre></div>
-      <div class="code-tab-content" id="py1"><pre><span class="kw">import</span> scvelo <span class="kw">as</span> scv
-scv.pp.filter_and_normalize(adata, min_shared_counts=<span class="num">20</span>)
-scv.pp.moments(adata, n_pcs=<span class="num">30</span>, n_neighbors=<span class="num">30</span>)
+<span class="func">plot_cells</span>(cds, color_cells_by=<span class="str">"pseudotime"</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre><span class="kw">import</span> scvelo <span class="kw">as</span> scv
+scv.pp.filter_and_normalize(adata)
+scv.pp.moments(adata)
 scv.tl.velocity(adata)
-scv.tl.velocity_graph(adata)
-scv.pl.velocity_embedding_stream(adata, basis=<span class="str">"umap"</span>)</pre></div>
-    </div>
-    <div class="callout danger"><span class="callout-icon">🚨</span><div><strong>Pseudotime ≠ 真實時間。</strong>不同起始點、不同方法可能給出不同軌跡。需實驗驗證。</div></div>
-  </section>
-
-  <section class="quiz-section"><h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="1"><p>RNA Velocity 的獨特優勢？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. 不需聚類</div><div class="quiz-opt" data-idx="1">B. 能推斷轉變「方向」</div><div class="quiz-opt" data-idx="2">C. 不需設起始點</div><div class="quiz-opt" data-idx="3">D. 速度更快</div></div><div class="quiz-feedback" id="fb1"></div></div>
-  </section>
-  <nav class="page-nav"><a href="cellchat.html"><span class="nav-dir">← 上一個主題</span><span class="nav-title">CellChat</span></a><a href="index.html"><span class="nav-dir">🏠 回到首頁</span><span class="nav-title">教學首頁</span></a></nav>
-</main>
-<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
-<script>
-window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+scv.pl.velocity_embedding_stream(adata, basis=<span class="str">"umap"</span>)</pre></div></div></section>
+<section class="quiz-section"><h3 data-i18n="quizTitle">📝 自我檢測</h3>
+<div class="quiz-q" data-answer="1"><p data-i18n="q1">RNA Velocity 的獨特優勢？</p><div class="quiz-options">
+<div class="quiz-opt" data-idx="0" data-i18n="q1a">A. 不需聚類</div><div class="quiz-opt" data-idx="1" data-i18n="q1b">B. 能推斷轉變方向</div><div class="quiz-opt" data-idx="2" data-i18n="q1c">C. 不需設起始點</div><div class="quiz-opt" data-idx="3" data-i18n="q1d">D. 速度更快</div>
+</div><div class="quiz-feedback" id="fb1"></div></div></section>
+<nav class="page-nav"><a href="cellchat.html"><span class="nav-dir" data-i18n="_prev">← 上一步</span><span class="nav-title" data-i18n="_pt">CellChat</span></a><a href="index.html"><span class="nav-dir" data-i18n="_next">下一步 →</span><span class="nav-title" data-i18n="_nt">教學首頁</span></a></nav></main>
+<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script>
+<script>window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-
-// Generate trajectory points along a curved path
-const trajPts=[];
-for(let i=0;i<200;i++){
-  const t=i/200; // 0..1 pseudotime
-  const path=t<0.5?0:(Math.random()<0.5?1:2); // branch
-  let x,y;
-  if(t<0.4){x=-6+t*15;y=2+Math.sin(t*6)*2;}
-  else if(path<=1){x=-6+t*15;y=2+Math.sin(t*6)*2+(t-0.4)*8;}
-  else{x=-6+t*15;y=2+Math.sin(t*6)*2-(t-0.4)*6;}
-  x+=(Math.random()-0.5)*1.5;y+=(Math.random()-0.5)*1.5;
-  const cl=t<0.3?0:t<0.6?1:2;
-  trajPts.push({x,y,t,cl});
-}
-
-const ptColors=trajPts.map(p=>{const r=Math.round(50+p.t*180);const g=Math.round(180-p.t*120);const b=Math.round(80+p.t*60);return `rgba(${r},${g},${b},0.7)`;});
-const clColors=['#1a6b5a','#d4a03c','#c0392b'];
-const clColorsArr=trajPts.map(p=>clColors[p.cl]+'99');
-
-const trajChart=new Chart(document.getElementById('trajChart'),{type:'scatter',data:{datasets:[{data:trajPts.map(p=>({x:p.x,y:p.y})),backgroundColor:ptColors,pointRadius:3.5}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'UMAP 1'},min:-9,max:11},y:{title:{display:true,text:'UMAP 2'},min:-8,max:10}}}});
-
-function colorTraj(mode){
-  ['pt','cl'].forEach(k=>{const b=document.getElementById('btn-'+k);b.style.background=k===mode?'var(--c-accent)':'var(--c-bg-alt)';b.style.color=k===mode?'#fff':'var(--c-ink)';});
-  trajChart.data.datasets[0].backgroundColor=mode==='pt'?ptColors:clColorsArr;
-  trajChart.update('none');
-}
-
-// Gene expression along pseudotime
-const geneProfiles=[
-  {name:'Stem marker（早期高、後期低）',data:trajPts.map(p=>({x:p.t,y:Math.max(0,3-p.t*4+Math.random()*0.5)})),color:'#1a6b5a'},
-  {name:'Transition gene（中期高峰）',data:trajPts.map(p=>({x:p.t,y:Math.max(0,Math.exp(-30*(p.t-0.45)**2)*3+Math.random()*0.3)})),color:'#d4a03c'},
-  {name:'Terminal marker（後期上升）',data:trajPts.map(p=>({x:p.t,y:Math.max(0,p.t*3-0.5+Math.random()*0.4)})),color:'#c0392b'}
-];
-
-const geneChart=new Chart(document.getElementById('geneChart'),{type:'scatter',data:{datasets:[{data:geneProfiles[0].data,backgroundColor:geneProfiles[0].color+'66',pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Pseudotime'},min:0,max:1},y:{title:{display:true,text:'Expression'},min:0,max:4}}}});
-
-function showGene(i){
-  for(let j=0;j<3;j++){const b=document.getElementById('gene-'+j);b.style.background=j===i?'var(--c-highlight)':'var(--c-bg-alt)';b.style.color=j===i?'#fff':'var(--c-ink)';}
-  geneChart.data.datasets[0].data=geneProfiles[i].data;
-  geneChart.data.datasets[0].backgroundColor=geneProfiles[i].color+'66';
-  geneChart.update('none');
-}
-
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ RNA Velocity 利用 spliced/unspliced 比率推斷方向。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 B。';}});});});
-</script>
-</body></html>
+I18n.registerTranslations({"zh": {"title": "軌跡分析 (Trajectory)", "subtitle": "從靜態快照推估細胞狀態轉變路徑。", "_prev": "← 上一步", "_pt": "CellChat", "_next": "下一步 →", "_nt": "教學首頁", "s1l": "互動模擬", "s1t": "Pseudotime 視覺化", "g0": "幹細胞 marker", "g1": "過渡基因", "g2": "終端 marker", "s2l": "程式碼", "s2t": "實作範例", "q1": "RNA Velocity 的獨特優勢？", "q1a": "A. 不需聚類", "q1b": "B. 能推斷轉變方向", "q1c": "C. 不需設起始點", "q1d": "D. 速度更快"}, "en": {"title": "Trajectory / Pseudotime", "subtitle": "Infer cell state transitions from static snapshots.", "_prev": "← Previous", "_pt": "CellChat", "_next": "Next →", "_nt": "Tutorial Home", "s1l": "Interactive", "s1t": "Pseudotime Visualization", "g0": "Stem marker", "g1": "Transition", "g2": "Terminal marker", "s2l": "Code", "s2t": "Code examples", "q1": "Unique advantage of RNA Velocity?", "q1a": "A. No clustering needed", "q1b": "B. Can infer direction of transitions", "q1c": "C. No root cell needed", "q1d": "D. Faster"}});
+const tP=[];for(let i=0;i<200;i++){const t=i/200;const path=t<0.5?0:(Math.random()<0.5?1:2);let x,y;if(t<0.4){x=-6+t*15;y=2+Math.sin(t*6)*2;}else if(path<=1){x=-6+t*15;y=2+Math.sin(t*6)*2+(t-0.4)*8;}else{x=-6+t*15;y=2+Math.sin(t*6)*2-(t-0.4)*6;}x+=(Math.random()-0.5)*1.5;y+=(Math.random()-0.5)*1.5;tP.push({x,y,t,cl:t<0.3?0:t<0.6?1:2});}
+const ptCols=tP.map(p=>{const r=Math.round(50+p.t*180),g=Math.round(180-p.t*120),b=Math.round(80+p.t*60);return`rgba(${r},${g},${b},0.7)`;});
+const clCols=['#1a6b5a','#d4a03c','#c0392b'];const clCA=tP.map(p=>clCols[p.cl]+'99');
+const tChart=new Chart(document.getElementById('tChart'),{type:'scatter',data:{datasets:[{data:tP.map(p=>({x:p.x,y:p.y})),backgroundColor:ptCols,pointRadius:3.5}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{min:-9,max:11,title:{display:true,text:'UMAP 1'}},y:{min:-8,max:10,title:{display:true,text:'UMAP 2'}}}}});
+function colorT(m){['pt','cl'].forEach(k=>document.getElementById('btn-'+k).classList.toggle('active',k===m));tChart.data.datasets[0].backgroundColor=m==='pt'?ptCols:clCA;tChart.update('none');}
+const gP=[{data:tP.map(p=>({x:p.t,y:Math.max(0,3-p.t*4+Math.random()*0.5)})),color:'#1a6b5a'},{data:tP.map(p=>({x:p.t,y:Math.max(0,Math.exp(-30*(p.t-0.45)**2)*3+Math.random()*0.3)})),color:'#d4a03c'},{data:tP.map(p=>({x:p.t,y:Math.max(0,p.t*3-0.5+Math.random()*0.4)})),color:'#c0392b'}];
+const gChart=new Chart(document.getElementById('gChart'),{type:'scatter',data:{datasets:[{data:gP[0].data,backgroundColor:gP[0].color+'66',pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{x:{min:0,max:1,title:{display:true,text:'Pseudotime'}},y:{min:0,max:4,title:{display:true,text:'Expression'}}}}});
+function showG(i){for(let j=0;j<3;j++)document.getElementById('gene-'+j).classList.toggle('active',j===i);gChart.data.datasets[0].data=gP[i].data;gChart.data.datasets[0].backgroundColor=gP[i].color+'66';gChart.update('none');}
+window.QF={zh:{q1_y:'RNA Velocity 利用 spliced/unspliced 比率推斷方向。',q1_n:'答案是 B。'},en:{q1_y:'RNA Velocity infers direction from spliced/unspliced ratios.',q1_n:'Answer is B.'}};
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?'correct':'wrong');if(!ok)q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');const L=I18n.getLang();const F=window.QF||{};fb.className='quiz-feedback show '+(ok?'correct-fb':'wrong-fb');fb.textContent=(ok?'✅ ':'❌ ')+(F[L]&&F[L]['q'+(qi+1)+'_'+(ok?'y':'n')]||'');});});});</script></body></html>

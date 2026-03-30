@@ -1,97 +1,42 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step 2: 標準化 (Normalization) — scRNA-seq 教學</title>
-  <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-</head>
-<body>
-<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html" class="active">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
-<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-<header class="page-hero"><div class="step-badge">STEP 2 / 9</div><h1>標準化 (Normalization)</h1><p class="subtitle">消除技術偏差，讓不同細胞間的基因表達值具備可比性。</p></header>
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Step 2: Normalization</title><link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html" class=active>Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">STEP 2 / 9</div><h1 data-i18n="title">標準化 (Normalization)</h1><p class="subtitle" data-i18n="subtitle">消除技術偏差，讓不同細胞間的基因表達值具備可比性。</p></header>
 <main class="content-wrap">
-  <section class="section">
-    <div class="section-label">為什麼</div><h2>為什麼需要標準化？</h2>
-    <p>即使是完全相同的細胞，也會因為<span class="term">定序深度<span class="term-tip">每個細胞在定序儀上獲得的總 reads 數不同</span></span>、捕獲效率、液滴大小等技術因素，呈現不同的原始計數。</p>
-    <div class="card-grid cols-2">
-      <div class="card"><div class="card-icon">📊</div><h4>定序深度</h4><p>不同細胞獲得的總 reads 數不同。</p></div>
-      <div class="card"><div class="card-icon">🧲</div><h4>捕獲效率</h4><p>逆轉錄成 cDNA 的效率有隨機差異。</p></div>
-      <div class="card"><div class="card-icon">💧</div><h4>液滴大小</h4><p>微流控中每個液滴試劑量有微小差異。</p></div>
-      <div class="card"><div class="card-icon">🧬</div><h4>RNA 含量差異</h4><p>不同類型細胞攜帶的 RNA 絕對量不同。</p></div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-label">互動模擬</div><h2>數據分佈的變化</h2>
-    <p>點擊按鈕觀察不同標準化方法如何改變分佈。</p>
-    <div class="interactive-panel">
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;">
-        <button class="code-tab-btn" id="btn-raw" onclick="showDist('raw')" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 16px;">原始數據</button>
-        <button class="code-tab-btn" id="btn-log" onclick="showDist('log')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 16px;">LogNormalize</button>
-        <button class="code-tab-btn" id="btn-scran" onclick="showDist('scran')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 16px;">Scran</button>
-        <button class="code-tab-btn" id="btn-sct" onclick="showDist('sct')" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 16px;">SCTransform</button>
-      </div>
-      <div id="distDesc" style="font-size:0.92rem;color:var(--c-ink-light);margin-bottom:12px;"><strong>原始數據：</strong>嚴重右偏，大量零值。</div>
-      <div class="chart-container" style="height:300px;"><canvas id="distChart"></canvas></div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-label">方法比較</div><h2>三種主要方法</h2>
-    <table class="comp-table"><thead><tr><th>特性</th><th>LogNormalize</th><th>Scran</th><th>SCTransform</th></tr></thead><tbody>
-      <tr><td><strong>核心邏輯</strong></td><td>線性縮放 + log(x+1)</td><td>細胞池解卷積</td><td>正則化負二項回歸</td></tr>
-      <tr><td><strong>速度</strong></td><td>極快</td><td>中等</td><td>較慢</td></tr>
-      <tr><td><strong>適用情境</strong></td><td>快速探索</td><td>細胞 RNA 含量差異大</td><td>正式分析（目前主流）</td></tr>
-    </tbody></table>
-    <div class="decision-tree"><h4>🌳 我該用哪種方法？</h4>
-      <div class="dt-node"><span class="dt-q">Q1:</span><div>Seurat 正式分析？ <span class="dt-arrow">→</span> <strong>SCTransform</strong>。</div></div>
-      <div class="dt-node"><span class="dt-q">Q2:</span><div>Scanpy？ <span class="dt-arrow">→</span> <code>normalize_total</code> + <code>log1p</code>。</div></div>
-      <div class="dt-node"><span class="dt-q">Q3:</span><div>細胞大小差異極大？ <span class="dt-arrow">→</span> <strong>Scran</strong>。</div></div>
-    </div>
-  </section>
-
-  <section class="section">
-    <div class="section-label">程式碼</div><h2>實作範例</h2>
-    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
-      <div class="code-tab-content active" id="r1"><pre><span class="comment"># LogNormalize（預設）</span>
+<section class="section"><div class="section-label" data-i18n="s1l">為什麼</div><h2 data-i18n="s1t">為什麼需要標準化？</h2><p data-i18n="s1p">即使相同的細胞，也會因定序深度、捕獲效率、液滴大小等技術因素呈現不同計數。</p></section>
+<section class="section"><div class="section-label" data-i18n="s2l">互動模擬</div><h2 data-i18n="s2t">數據分佈的變化</h2><p data-i18n="s2p">點擊按鈕觀察不同方法如何改變分佈。</p>
+<div class="interactive-panel"><div class="toggle-row">
+<button class="toggle-btn active" id="btn-raw" onclick="showDist('raw')">Raw</button>
+<button class="toggle-btn" id="btn-log" onclick="showDist('log')">LogNormalize</button>
+<button class="toggle-btn" id="btn-scran" onclick="showDist('scran')">Scran</button>
+<button class="toggle-btn" id="btn-sct" onclick="showDist('sct')">SCTransform</button>
+</div><div id="distDesc" style="font-size:.92rem;color:var(--c-ink-light);margin-bottom:12px;"></div>
+<div class="chart-container" style="height:300px;"><canvas id="distChart"></canvas></div></div></section>
+<section class="section"><div class="section-label" data-i18n="s3l">程式碼</div><h2 data-i18n="s3t">實作範例</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+<div class="code-tab-content active" id="r1"><pre><span class="comment"># LogNormalize</span>
 pbmc &lt;- <span class="func">NormalizeData</span>(pbmc, normalization.method = <span class="str">"LogNormalize"</span>, scale.factor = <span class="num">10000</span>)
-<span class="comment"># SCTransform（推薦）</span>
-pbmc &lt;- <span class="func">SCTransform</span>(pbmc, vars.to.regress = <span class="str">"percent.mt"</span>, verbose = <span class="kw">FALSE</span>)</pre></div>
-      <div class="code-tab-content" id="py1"><pre>sc.pp.normalize_total(adata, target_sum=<span class="num">1e4</span>)
+<span class="comment"># SCTransform (recommended)</span>
+pbmc &lt;- <span class="func">SCTransform</span>(pbmc, vars.to.regress = <span class="str">"percent.mt"</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre>sc.pp.normalize_total(adata, target_sum=<span class="num">1e4</span>)
 sc.pp.log1p(adata)
-adata.raw = adata.copy()</pre></div>
-    </div>
-    <div class="callout tip"><span class="callout-icon">💡</span><div><strong>Normalization ≠ Scaling。</strong>Normalization 處理細胞間定序深度；Scaling 是基因做 Z-score。兩者不同。</div></div>
-  </section>
-
-  <section class="quiz-section">
-    <h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="1"><p>LogNormalize 的核心步驟是？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. 減去平均值，除以標準差</div><div class="quiz-opt" data-idx="1">B. 除以總計數 × scale factor → log(x+1)</div><div class="quiz-opt" data-idx="2">C. 負二項回歸</div><div class="quiz-opt" data-idx="3">D. 縮放到 0–1</div></div><div class="quiz-feedback" id="fb1"></div></div>
-  </section>
-
-  <nav class="page-nav">
-    <a href="qc.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 1：QC</span></a>
-    <a href="variable-features.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 3：高變異基因</span></a>
-  </nav>
-</main>
-<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
-<script>
-window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+adata.raw = adata.copy()</pre></div></div></section>
+<section class="quiz-section"><h3 data-i18n="quizTitle">📝 自我檢測</h3>
+<div class="quiz-q" data-answer="1"><p data-i18n="q1">LogNormalize 的核心步驟是？</p><div class="quiz-options">
+<div class="quiz-opt" data-idx="0" data-i18n="q1a">A. 減去平均值，除以標準差</div>
+<div class="quiz-opt" data-idx="1" data-i18n="q1b">B. 除以總計數 × scale factor → log(x+1)</div>
+<div class="quiz-opt" data-idx="2" data-i18n="q1c">C. 負二項回歸</div>
+<div class="quiz-opt" data-idx="3" data-i18n="q1d">D. 縮放到 0–1</div>
+</div><div class="quiz-feedback" id="fb1"></div></div></section>
+<nav class="page-nav"><a href="qc.html"><span class="nav-dir" data-i18n="_prev">← 上一步</span><span class="nav-title" data-i18n="_pt">Step 1：QC</span></a><a href="variable-features.html"><span class="nav-dir" data-i18n="_next">下一步 →</span><span class="nav-title" data-i18n="_nt">Step 3：高變異基因</span></a></nav></main>
+<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script>
+<script>window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-
-const dists={raw:{labels:['0','1-5','5-20','20-100','100-500','500+'],data:[420,180,120,80,40,20],desc:'<strong>原始數據：</strong>嚴重右偏，大量零值，高表達基因主導。',color:'rgba(192,57,43,0.6)'},log:{labels:['0','0-1','1-2','2-3','3-4','4+'],data:[320,90,140,160,100,50],desc:'<strong>LogNormalize：</strong>log(x+1) 壓縮動態範圍，但仍保留大量零值。',color:'rgba(41,128,185,0.6)'},scran:{labels:['0','0-1','1-2','2-3','3-4','4+'],data:[300,80,130,170,110,70],desc:'<strong>Scran：</strong>細胞池解卷積估算 size factor，更精確。',color:'rgba(142,68,173,0.6)'},sct:{labels:['-3','-2','-1','0','1','2','3'],data:[15,60,180,300,180,55,10],desc:'<strong>SCTransform：</strong>負二項回歸殘差，近似常態分佈。',color:'rgba(26,107,90,0.6)'}};
-
-// Create chart ONCE
-const distChart=new Chart(document.getElementById('distChart'),{type:'bar',data:{labels:dists.raw.labels,datasets:[{data:dists.raw.data,backgroundColor:dists.raw.color,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:'細胞數'}},x:{title:{display:true,text:'表達值區間'}}}}});
-
-function showDist(key){
-  ['raw','log','scran','sct'].forEach(k=>{const b=document.getElementById('btn-'+k);b.style.background=k===key?'var(--c-accent)':'var(--c-bg-alt)';b.style.color=k===key?'#fff':'var(--c-ink)';});
-  const d=dists[key];document.getElementById('distDesc').innerHTML=d.desc;
-  distChart.data.labels=d.labels;distChart.data.datasets[0].data=d.data;distChart.data.datasets[0].backgroundColor=d.color;
-  distChart.update('none');
-}
-
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;const fb=document.getElementById('fb'+(qi+1));q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ 正確！除以總計數 → × scale factor → log(x+1)。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 B。A 是 Scaling，C 是 SCTransform。';}});});});
-</script>
-</body></html>
+I18n.registerTranslations({"zh": {"title": "標準化 (Normalization)", "subtitle": "消除技術偏差，讓不同細胞間的基因表達值具備可比性。", "s1l": "為什麼", "s1t": "為什麼需要標準化？", "s1p": "即使相同的細胞，也會因定序深度、捕獲效率、液滴大小等技術因素呈現不同計數。", "s2l": "互動模擬", "s2t": "數據分佈的變化", "s2p": "點擊按鈕觀察不同方法如何改變分佈。", "s3l": "程式碼", "s3t": "實作範例", "q1": "LogNormalize 的核心步驟是？", "q1a": "A. 減去平均值，除以標準差", "q1b": "B. 除以總計數 × scale factor → log(x+1)", "q1c": "C. 負二項回歸", "q1d": "D. 縮放到 0–1", "_prev": "← 上一步", "_pt": "Step 1：QC", "_next": "下一步 →", "_nt": "Step 3：高變異基因", "d_raw": "<strong>原始數據：</strong>嚴重右偏，大量零值。", "d_log": "<strong>LogNormalize：</strong>log(x+1) 壓縮動態範圍。", "d_scran": "<strong>Scran：</strong>細胞池解卷積，size factor 更精確。", "d_sct": "<strong>SCTransform：</strong>負二項回歸殘差，近似常態。"}, "en": {"title": "Normalization", "subtitle": "Remove technical biases so gene expression is comparable across cells.", "s1l": "Why", "s1t": "Why normalize?", "s1p": "Even identical cells show different raw counts due to sequencing depth, capture efficiency, and droplet size variations.", "s2l": "Interactive", "s2t": "Distribution changes", "s2p": "Click buttons to see how methods change the distribution.", "s3l": "Code", "s3t": "Code examples", "q1": "Core steps of LogNormalize?", "q1a": "A. Subtract mean, divide by std", "q1b": "B. Divide by total counts × scale factor → log(x+1)", "q1c": "C. Negative binomial regression", "q1d": "D. Scale to 0–1", "_prev": "← Previous", "_pt": "Step 1: QC", "_next": "Next →", "_nt": "Step 3: Variable Features", "d_raw": "<strong>Raw Counts:</strong> Heavily right-skewed, many zeros.", "d_log": "<strong>LogNormalize:</strong> log(x+1) compresses dynamic range.", "d_scran": "<strong>Scran:</strong> Pool-based deconvolution, more accurate size factors.", "d_sct": "<strong>SCTransform:</strong> NB regression residuals, approximately normal."}});
+const dists={raw:{labels:['0','1-5','5-20','20-100','100-500','500+'],data:[420,180,120,80,40,20],color:'rgba(192,57,43,0.6)'},log:{labels:['0','0-1','1-2','2-3','3-4','4+'],data:[320,90,140,160,100,50],color:'rgba(41,128,185,0.6)'},scran:{labels:['0','0-1','1-2','2-3','3-4','4+'],data:[300,80,130,170,110,70],color:'rgba(142,68,173,0.6)'},sct:{labels:['-3','-2','-1','0','1','2','3'],data:[15,60,180,300,180,55,10],color:'rgba(26,107,90,0.6)'}};
+const distChart=new Chart(document.getElementById('distChart'),{type:'bar',data:{labels:dists.raw.labels,datasets:[{data:dists.raw.data,backgroundColor:dists.raw.color,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:'Cells'}},x:{title:{display:true,text:'Expression'}}}}});
+function showDist(k){['raw','log','scran','sct'].forEach(x=>{const b=document.getElementById('btn-'+x);b.classList.toggle('active',x===k);});const d=dists[k];document.getElementById('distDesc').innerHTML=(I18n.getLang()==='zh'?{raw:'<strong>原始數據：</strong>嚴重右偏，大量零值。',log:'<strong>LogNormalize：</strong>log(x+1) 壓縮動態範圍。',scran:'<strong>Scran：</strong>細胞池解卷積。',sct:'<strong>SCTransform：</strong>負二項回歸殘差，近似常態。'}:{raw:'<strong>Raw Counts:</strong> Right-skewed, many zeros.',log:'<strong>LogNormalize:</strong> log(x+1) compresses range.',scran:'<strong>Scran:</strong> Pool-based deconvolution.',sct:'<strong>SCTransform:</strong> NB regression residuals, ~normal.'})[k];distChart.data.labels=d.labels;distChart.data.datasets[0].data=d.data;distChart.data.datasets[0].backgroundColor=d.color;distChart.update('none');}
+document.addEventListener('langchange',()=>{const active=document.querySelector('.toggle-btn.active');if(active)showDist(active.id.replace('btn-',''));});
+window.QF={zh:{q1_y:'除以總計數 → × scale factor → log(x+1)。',q1_n:'答案是 B。'},en:{q1_y:'Divide by total → × scale factor → log(x+1).',q1_n:'Answer is B.'}};
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?'correct':'wrong');if(!ok)q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');const L=I18n.getLang();const F=window.QF||{};fb.className='quiz-feedback show '+(ok?'correct-fb':'wrong-fb');fb.textContent=(ok?'✅ ':'❌ ')+(F[L]&&F[L]['q'+(qi+1)+'_'+(ok?'y':'n')]||'');});});});</script></body></html>

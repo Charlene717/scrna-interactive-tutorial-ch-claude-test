@@ -1,53 +1,29 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Step 3: 高變異基因選擇 — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
-<body>
-<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html" class="active">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
-<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-<header class="page-hero"><div class="step-badge">STEP 3 / 9</div><h1>高變異基因選擇 (Variable Features)</h1><p class="subtitle">從數萬個基因中篩選出最具分辨力的特徵，聚焦生物學訊號。</p></header>
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Step 3: Variable Features</title><link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html" class=active>Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+
+<header class="page-hero"><div class="step-badge">STEP 3 / 9</div><h1 data-i18n="title">高變異基因選擇</h1><p class="subtitle" data-i18n="subtitle">從數萬個基因中篩選最具分辨力的特徵。</p></header>
 <main class="content-wrap">
-  <section class="section"><div class="section-label">核心概念</div><h2>為什麼不用所有基因？</h2>
-    <p>典型數據集含 2–3 萬基因，但大多數在細胞間變異極小（如<span class="term">管家基因<span class="term-tip">Housekeeping genes：在幾乎所有細胞中穩定表達的基因</span></span>）。我們需要那些<strong>在某些細胞中高度表達、在其他細胞中低表達</strong>的基因。</p>
-  </section>
-
-  <section class="section"><div class="section-label">互動模擬</div><h2>Mean-Variance 關係圖</h2>
-    <p>紅色點為被選中的高變異基因。拖動滑桿調整選取數量。</p>
-    <div class="interactive-panel">
-      <div class="slider-group"><label>選取基因數 <span id="valHVG">2000</span></label><input type="range" id="sliderHVG" min="500" max="5000" value="2000" step="100"></div>
-      <div class="chart-container" style="height:320px;"><canvas id="hvgChart"></canvas></div>
-    </div>
-    <div class="callout tip"><span class="callout-icon">💡</span><div><strong>選多少個？</strong>2000–3000 是經驗值。腫瘤微環境等高異質性數據可調高到 3000–5000。</div></div>
-  </section>
-
-  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
-    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
-      <div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">FindVariableFeatures</span>(pbmc, selection.method = <span class="str">"vst"</span>, nfeatures = <span class="num">2000</span>)
-top10 &lt;- <span class="func">head</span>(<span class="func">VariableFeatures</span>(pbmc), <span class="num">10</span>)
-<span class="func">VariableFeaturePlot</span>(pbmc)</pre></div>
-      <div class="code-tab-content" id="py1"><pre>sc.pp.highly_variable_genes(adata, n_top_genes=<span class="num">2000</span>, flavor=<span class="str">"seurat_v3"</span>)
-sc.pl.highly_variable_genes(adata)
-adata = adata[:, adata.var.highly_variable]</pre></div>
-    </div>
-  </section>
-
-  <section class="quiz-section"><h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="2"><p>管家基因不會被選為 HVG 的原因？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. 平均表達量太低</div><div class="quiz-opt" data-idx="1">B. 只在特定細胞表達</div><div class="quiz-opt" data-idx="2">C. 在所有細胞穩定表達，變異小</div><div class="quiz-opt" data-idx="3">D. 被 QC 過濾掉了</div></div><div class="quiz-feedback" id="fb1"></div></div>
-  </section>
-  <nav class="page-nav"><a href="normalization.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 2：標準化</span></a><a href="scaling.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 4：Scaling</span></a></nav>
-</main>
-<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
-<script>
-window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+<section class="section"><div class="section-label" data-i18n="s1l">互動模擬</div><h2 data-i18n="s1t">Mean-Variance 關係圖</h2><p data-i18n="s1p">紅色=HVG。拖動滑桿調整選取數量。</p>
+<div class="interactive-panel"><div class="slider-group"><label><span data-i18n="sl1">選取基因數</span> <span id="valHVG">2000</span></label><input type="range" id="sliderHVG" min="500" max="5000" value="2000" step="100"></div>
+<div class="chart-container" style="height:320px;"><canvas id="hvgChart"></canvas></div></div></section>
+<section class="section"><div class="section-label" data-i18n="s2l">程式碼</div><h2 data-i18n="s2t">實作範例</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
+<div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">FindVariableFeatures</span>(pbmc, selection.method=<span class="str">"vst"</span>, nfeatures=<span class="num">2000</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre>sc.pp.highly_variable_genes(adata, n_top_genes=<span class="num">2000</span>, flavor=<span class="str">"seurat_v3"</span>)
+adata = adata[:, adata.var.highly_variable]</pre></div></div></section>
+<section class="quiz-section"><h3 data-i18n="quizTitle">📝 自我檢測</h3>
+<div class="quiz-q" data-answer="2"><p data-i18n="q1">管家基因不會被選為 HVG 的原因？</p><div class="quiz-options">
+<div class="quiz-opt" data-idx="0" data-i18n="q1a">A. 表達量太低</div><div class="quiz-opt" data-idx="1" data-i18n="q1b">B. 只在特定細胞表達</div><div class="quiz-opt" data-idx="2" data-i18n="q1c">C. 在所有細胞穩定表達，變異小</div><div class="quiz-opt" data-idx="3" data-i18n="q1d">D. 被 QC 過濾了</div>
+</div><div class="quiz-feedback" id="fb1"></div></div></section>
+<nav class="page-nav"><a href="normalization.html"><span class="nav-dir" data-i18n="_prev">← 上一步</span><span class="nav-title" data-i18n="_pt">Step 2：標準化</span></a><a href="scaling.html"><span class="nav-dir" data-i18n="_next">下一步 →</span><span class="nav-title" data-i18n="_nt">Step 4：Scaling</span></a></nav></main>
+<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script>
+<script>window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-
-const genes=[];for(let i=0;i<3000;i++){const mean=Math.random()*5;const bv=mean*0.3+Math.random()*0.5;const isH=Math.random()<0.25;genes.push({mean,variance:isH?bv+1.5+Math.random()*3:bv});}
-genes.sort((a,b)=>b.variance-a.variance);
-
-const hvgChart=new Chart(document.getElementById('hvgChart'),{type:'scatter',data:{datasets:[{label:'HVG',data:[],backgroundColor:'rgba(192,57,43,0.5)',pointRadius:3},{label:'非 HVG',data:[],backgroundColor:'rgba(180,180,170,0.3)',pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{title:{display:true,text:'平均表達量'}},y:{title:{display:true,text:'變異度'}}},plugins:{legend:{position:'top'}}}});
-
-function updateHVG(){const n=+document.getElementById('sliderHVG').value;document.getElementById('valHVG').textContent=n;const sel=[],rest=[];genes.forEach((g,i)=>{(i<n?sel:rest).push({x:g.mean,y:g.variance});});hvgChart.data.datasets[0].data=sel;hvgChart.data.datasets[1].data=rest;hvgChart.update('none');}
-document.getElementById('sliderHVG').addEventListener('input',updateHVG);updateHVG();
-
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ 正確！管家基因在各細胞間穩定表達，變異度低。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 C。';}});});});
-</script>
-</body></html>
+I18n.registerTranslations({"zh": {"title": "高變異基因選擇 (Variable Features)", "subtitle": "從數萬個基因中篩選最具分辨力的特徵。", "s1l": "互動模擬", "s1t": "Mean-Variance 關係圖", "s1p": "紅色=HVG。拖動滑桿調整選取數量。", "sl1": "選取基因數", "s2l": "程式碼", "s2t": "實作範例", "q1": "管家基因不會被選為 HVG 的原因？", "q1a": "A. 表達量太低", "q1b": "B. 只在特定細胞表達", "q1c": "C. 在所有細胞穩定表達，變異小", "q1d": "D. 被 QC 過濾了", "_prev": "← 上一步", "_pt": "Step 2：標準化", "_next": "下一步 →", "_nt": "Step 4：Scaling"}, "en": {"title": "Variable Features (HVGs)", "subtitle": "Select the most informative genes from tens of thousands.", "s1l": "Interactive", "s1t": "Mean-Variance Plot", "s1p": "Red = HVG. Drag slider to adjust selection count.", "sl1": "Number of genes", "s2l": "Code", "s2t": "Code examples", "q1": "Why are housekeeping genes not selected as HVGs?", "q1a": "A. Expression too low", "q1b": "B. Only expressed in specific cells", "q1c": "C. Stably expressed in all cells, low variance", "q1d": "D. Filtered by QC", "_prev": "← Previous", "_pt": "Step 2: Normalization", "_next": "Next →", "_nt": "Step 4: Scaling"}});
+const genes=[];for(let i=0;i<3000;i++){const m=Math.random()*5;const bv=m*0.3+Math.random()*0.5;genes.push({mean:m,variance:Math.random()<0.25?bv+1.5+Math.random()*3:bv});}genes.sort((a,b)=>b.variance-a.variance);
+const hvgChart=new Chart(document.getElementById('hvgChart'),{type:'scatter',data:{datasets:[{label:'HVG',data:[],backgroundColor:'rgba(192,57,43,0.5)',pointRadius:3},{label:'Non-HVG',data:[],backgroundColor:'rgba(180,180,170,0.3)',pointRadius:2}]},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{title:{display:true,text:'Mean'}},y:{title:{display:true,text:'Variance'}}},plugins:{legend:{position:'top'}}}});
+function upHVG(){const n=+document.getElementById('sliderHVG').value;document.getElementById('valHVG').textContent=n;const s=[],r=[];genes.forEach((g,i)=>{(i<n?s:r).push({x:g.mean,y:g.variance});});hvgChart.data.datasets[0].data=s;hvgChart.data.datasets[1].data=r;hvgChart.update('none');}
+document.getElementById('sliderHVG').addEventListener('input',upHVG);upHVG();
+window.QF={zh:{q1_y:'管家基因在各細胞穩定表達，變異度低。',q1_n:'答案是 C。'},en:{q1_y:'Housekeeping genes are stably expressed, low variance.',q1_n:'Answer is C.'}};
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?'correct':'wrong');if(!ok)q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');const L=I18n.getLang();const F=window.QF||{};fb.className='quiz-feedback show '+(ok?'correct-fb':'wrong-fb');fb.textContent=(ok?'✅ ':'❌ ')+(F[L]&&F[L]['q'+(qi+1)+'_'+(ok?'y':'n')]||'');});});});</script></body></html>

@@ -1,83 +1,30 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Step 6: 聚類 (Clustering) — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
-<body>
-<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html" class="active">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
-<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-<header class="page-hero"><div class="step-badge">STEP 6 / 9</div><h1>聚類 (Clustering)</h1><p class="subtitle">在 PCA 空間中建立近鄰網絡，透過社區發現辨識細胞族群。</p></header>
-<main class="content-wrap">
-  <section class="section"><div class="section-label">核心概念</div><h2>聚類三步邏輯</h2>
-    <div class="workflow">
-      <div class="workflow-step" data-step="1"><h4>建立 KNN 圖</h4><p>計算每個細胞最近的 K 個鄰居。</p></div>
-      <div class="workflow-step" data-step="2"><h4>SNN 權重</h4><p>共享鄰居越多，連接越強。</p></div>
-      <div class="workflow-step" data-step="3"><h4>社區發現</h4><p>Louvain 或 Leiden 演算法切割網絡。<strong>推薦 Leiden</strong>。</p></div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">互動模擬</div><h2>Resolution 參數的影響</h2>
-    <p>拖動滑桿觀察同一組數據在不同 resolution 下的分群。</p>
-    <div class="interactive-panel">
-      <div class="slider-group"><label>Resolution <span id="valRes">0.5</span></label><input type="range" id="sliderRes" min="1" max="20" value="5" step="1"></div>
-      <div id="resDesc" style="font-size:0.88rem;color:var(--c-ink-light);margin-bottom:8px;"></div>
-      <div class="chart-container" style="height:360px;"><canvas id="clusterChart"></canvas></div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
-    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
-      <div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">FindNeighbors</span>(pbmc, dims = <span class="num">1</span>:<span class="num">15</span>)
-pbmc &lt;- <span class="func">FindClusters</span>(pbmc, resolution = <span class="num">0.5</span>, algorithm = <span class="num">4</span>) <span class="comment"># Leiden</span>
-<span class="comment"># 嘗試多個 resolution</span>
-pbmc &lt;- <span class="func">FindClusters</span>(pbmc, resolution = <span class="func">c</span>(<span class="num">0.2</span>, <span class="num">0.5</span>, <span class="num">0.8</span>, <span class="num">1.2</span>))</pre></div>
-      <div class="code-tab-content" id="py1"><pre>sc.pp.neighbors(adata, n_pcs=<span class="num">15</span>)
-sc.tl.leiden(adata, resolution=<span class="num">0.5</span>)</pre></div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">常見陷阱</div><h2>三大陷阱</h2>
-    <div class="card-grid cols-3">
-      <div class="card" style="border-left:4px solid var(--c-danger);"><h4>✂️ 過度聚類</h4><p>Resolution 太高，同種細胞被拆成多群。</p></div>
-      <div class="card" style="border-left:4px solid var(--c-danger);"><h4>🧪 批次效應</h4><p>聚類反映樣本來源而非細胞類型。</p></div>
-      <div class="card" style="border-left:4px solid var(--c-danger);"><h4>👯 Doublets</h4><p>兩群之間的「橋樑」小群。</p></div>
-    </div>
-  </section>
-
-  <section class="quiz-section"><h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="0"><p>提高 resolution 會？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. 產生更多更細的 cluster</div><div class="quiz-opt" data-idx="1">B. 產生更少更大的 cluster</div><div class="quiz-opt" data-idx="2">C. 改變 PCA 結果</div><div class="quiz-opt" data-idx="3">D. 移除低品質細胞</div></div><div class="quiz-feedback" id="fb1"></div></div>
-  </section>
-  <nav class="page-nav"><a href="pca.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 5：PCA</span></a><a href="umap.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 7：UMAP</span></a></nav>
-</main>
-<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
-<script>
-window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>STEP 6 / 9: Clustering — scRNA-seq Tutorial</title><link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html" class=active>Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html">Annot.</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+<header class="page-hero"><div class="step-badge">STEP 6 / 9</div><h1 data-i18n="title">聚類 (Clustering)</h1><p class="subtitle" data-i18n="subtitle">在 PCA 空間中建立近鄰網絡，辨識細胞族群。</p></header>
+<main class="content-wrap"><section class="section"><div class="section-label" data-i18n="s1l">互動模擬</div><h2 data-i18n="s1t">Resolution 參數的影響</h2>
+<div class="interactive-panel"><div class="slider-group"><label>Resolution <span id="valRes">0.5</span></label><input type="range" id="sliderRes" min="1" max="20" value="5" step="1"></div>
+<div id="resDesc" style="font-size:.88rem;color:var(--c-ink-light);margin-bottom:8px;"></div>
+<div class="chart-container" style="height:360px;"><canvas id="clChart"></canvas></div></div></section>
+<section class="section"><div class="section-label" data-i18n="s2l">程式碼</div><h2 data-i18n="s2t">實作範例</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python</button></div>
+<div class="code-tab-content active" id="r1"><pre>pbmc &lt;- <span class="func">FindNeighbors</span>(pbmc, dims=<span class="num">1</span>:<span class="num">15</span>)
+pbmc &lt;- <span class="func">FindClusters</span>(pbmc, resolution=<span class="num">0.5</span>, algorithm=<span class="num">4</span>)</pre></div>
+<div class="code-tab-content" id="py1"><pre>sc.pp.neighbors(adata, n_pcs=<span class="num">15</span>)
+sc.tl.leiden(adata, resolution=<span class="num">0.5</span>)</pre></div></div></section>
+<section class="quiz-section"><h3 data-i18n="quizTitle">📝 自我檢測</h3>
+<div class="quiz-q" data-answer="0"><p data-i18n="q1">提高 resolution 會？</p><div class="quiz-options">
+<div class="quiz-opt" data-idx="0" data-i18n="q1a">A. 更多更細的 cluster</div><div class="quiz-opt" data-idx="1" data-i18n="q1b">B. 更少更大的 cluster</div><div class="quiz-opt" data-idx="2" data-i18n="q1c">C. 改變 PCA</div><div class="quiz-opt" data-idx="3" data-i18n="q1d">D. 移除低品質細胞</div>
+</div><div class="quiz-feedback" id="fb1"></div></div></section>
+<nav class="page-nav"><a href="pca.html"><span class="nav-dir" data-i18n="_prev">← 上一步</span><span class="nav-title" data-i18n="_pt">Step 5：PCA</span></a><a href="umap.html"><span class="nav-dir" data-i18n="_next">下一步 →</span><span class="nav-title" data-i18n="_nt">Step 7：UMAP</span></a></nav></main>
+<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script>
+<script>window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-
-// Pre-generate ALL points with stable positions; only cluster assignment changes
-const centers=[{x:-6,y:3},{x:-3,y:-4},{x:4,y:2},{x:5,y:-3},{x:-1,y:6},{x:0,y:0},{x:7,y:5},{x:-7,y:-2}];
-const colors=['#1a6b5a','#c0392b','#2980b9','#d4a03c','#8e44ad','#e67e22','#16a085','#e74c3c'];
-const allPts=[];
-centers.forEach((c,ci)=>{for(let i=0;i<80;i++){allPts.push({x:c.x+(Math.random()-0.5)*5,y:c.y+(Math.random()-0.5)*5,baseCluster:ci});}});
-
-// Pre-create 8 datasets (max clusters) in the chart
-const datasets=[];for(let i=0;i<8;i++){datasets.push({label:'Cluster '+i,data:[],backgroundColor:colors[i]+'88',pointRadius:3.5,hidden:false});}
-
-const clChart=new Chart(document.getElementById('clusterChart'),{type:'scatter',data:{datasets},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{title:{display:true,text:'UMAP 1'},min:-12,max:12},y:{title:{display:true,text:'UMAP 2'},min:-10,max:12}},plugins:{legend:{position:'right',labels:{font:{size:11}}}}}});
-
-function updateClusters(){
-  const rawVal=+document.getElementById('sliderRes').value;
-  const res=rawVal/10;
-  document.getElementById('valRes').textContent=res.toFixed(1);
-  const nC=Math.max(2,Math.min(8,Math.round(res*5+1)));
-  const desc=res<=0.4?'low':res<=1.0?'mid':'high';
-  document.getElementById('resDesc').innerHTML={low:'<strong>低 Resolution：</strong>'+nC+' 個大群，宏觀概覽。',mid:'<strong>中 Resolution：</strong>'+nC+' 個群，多數分析起點。',high:'<strong>高 Resolution：</strong>'+nC+' 個細群，注意過度聚類。'}[desc];
-  // Assign points to clusters by merging base clusters
-  const buckets=[];for(let i=0;i<8;i++)buckets.push([]);
-  allPts.forEach(p=>{const cl=p.baseCluster%nC;buckets[cl].push({x:p.x,y:p.y});});
-  for(let i=0;i<8;i++){clChart.data.datasets[i].data=buckets[i]||[];clChart.data.datasets[i].hidden=i>=nC;}
-  clChart.update('none');
-}
-document.getElementById('sliderRes').addEventListener('input',updateClusters);updateClusters();
-
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ Resolution 越高，分群越細。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 A。';}});});});
-</script>
-</body></html>
+I18n.registerTranslations({"zh": {"title": "聚類 (Clustering)", "subtitle": "在 PCA 空間中建立近鄰網絡，辨識細胞族群。", "_prev": "← 上一步", "_pt": "Step 5：PCA", "_next": "下一步 →", "_nt": "Step 7：UMAP", "s1l": "互動模擬", "s1t": "Resolution 參數的影響", "s2l": "程式碼", "s2t": "實作範例", "q1": "提高 resolution 會？", "q1a": "A. 更多更細的 cluster", "q1b": "B. 更少更大的 cluster", "q1c": "C. 改變 PCA", "q1d": "D. 移除低品質細胞"}, "en": {"title": "Clustering", "subtitle": "Build neighbor graphs in PCA space to identify cell populations.", "_prev": "← Previous", "_pt": "Step 5: PCA", "_next": "Next →", "_nt": "Step 7: UMAP", "s1l": "Interactive", "s1t": "Effect of Resolution", "s2l": "Code", "s2t": "Code examples", "q1": "Increasing resolution will?", "q1a": "A. More, finer clusters", "q1b": "B. Fewer, larger clusters", "q1c": "C. Change PCA", "q1d": "D. Remove low-quality cells"}});
+const ctrs=[{x:-6,y:3},{x:-3,y:-4},{x:4,y:2},{x:5,y:-3},{x:-1,y:6},{x:0,y:0},{x:7,y:5},{x:-7,y:-2}];const clrs=['#1a6b5a','#c0392b','#2980b9','#d4a03c','#8e44ad','#e67e22','#16a085','#e74c3c'];const allP=[];ctrs.forEach((c,ci)=>{for(let i=0;i<80;i++)allP.push({x:c.x+(Math.random()-0.5)*5,y:c.y+(Math.random()-0.5)*5,bc:ci});});
+const ds=[];for(let i=0;i<8;i++)ds.push({label:'Cluster '+i,data:[],backgroundColor:clrs[i]+'88',pointRadius:3.5,hidden:false});
+const clChart=new Chart(document.getElementById('clChart'),{type:'scatter',data:{datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,scales:{x:{min:-12,max:12,title:{display:true,text:'UMAP 1'}},y:{min:-10,max:12,title:{display:true,text:'UMAP 2'}}},plugins:{legend:{position:'right',labels:{font:{size:11}}}}}});
+function upCl(){const rv=+document.getElementById('sliderRes').value;const res=rv/10;document.getElementById('valRes').textContent=res.toFixed(1);const nC=Math.max(2,Math.min(8,Math.round(res*5+1)));const L=I18n.getLang();document.getElementById('resDesc').innerHTML=L==='zh'?'Resolution '+res.toFixed(1)+'：'+nC+' 個 cluster。':'Resolution '+res.toFixed(1)+': '+nC+' clusters.';const bk=[];for(let i=0;i<8;i++)bk.push([]);allP.forEach(p=>{bk[p.bc%nC].push({x:p.x,y:p.y});});for(let i=0;i<8;i++){clChart.data.datasets[i].data=bk[i]||[];clChart.data.datasets[i].hidden=i>=nC;}clChart.update('none');}
+document.getElementById('sliderRes').addEventListener('input',upCl);document.addEventListener('langchange',upCl);upCl();
+window.QF={zh:{q1_y:'Resolution 越高，分群越細。',q1_n:'答案是 A。'},en:{q1_y:'Higher resolution → finer clusters.',q1_n:'Answer is A.'}};
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?'correct':'wrong');if(!ok)q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');const L=I18n.getLang();const F=window.QF||{};fb.className='quiz-feedback show '+(ok?'correct-fb':'wrong-fb');fb.textContent=(ok?'✅ ':'❌ ')+(F[L]&&F[L]['q'+(qi+1)+'_'+(ok?'y':'n')]||'');});});});</script></body></html>

@@ -1,88 +1,31 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Step 8: 細胞註釋 — scRNA-seq 教學</title><link rel="stylesheet" href="styles.css"><script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script></head>
-<body>
-<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> scRNA-seq Tutorial</a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Normalization</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html" class="active">Annotation</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integration</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Trajectory</a></li></ul></div></nav>
-<div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
-<header class="page-hero"><div class="step-badge">STEP 8 / 9</div><h1>細胞註釋 (Annotation)</h1><p class="subtitle">將數學上的 Cluster 轉譯為有生物學意義的細胞類型名稱。</p></header>
-<main class="content-wrap">
-  <section class="section"><div class="section-label">核心概念</div><h2>從 Cluster 到細胞類型</h2>
-    <p>聚類不會告訴你細胞類型。註釋的任務是結合<span class="term">標誌基因<span class="term-tip">在特定細胞類型中特異性高表達的基因，如 CD3D→T 細胞</span></span>與領域知識來標記。</p>
-    <div class="workflow">
-      <div class="workflow-step" data-step="1"><h4>DEA 找 Markers</h4><p>比較目標 cluster 與其餘細胞，找到表達顯著上升的基因。</p></div>
-      <div class="workflow-step" data-step="2"><h4>自動註釋</h4><p>SingleR、Azimuth、CellTypist 與參考數據集比對。</p></div>
-      <div class="workflow-step" data-step="3"><h4>專家驗證（黃金標準）</h4><p>根據文獻 marker gene 列表逐一檢查，<strong>不可省略</strong>。</p></div>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">互動模擬</div><h2>Dot Plot 互動探索器</h2>
-    <p>選擇一個 cluster，觀察各 marker 基因的表達量。高表達的基因組合指向特定細胞類型。</p>
-    <div class="interactive-panel">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px;">
-        <button class="code-tab-btn" id="cl-0" onclick="showCluster(0)" style="background:var(--c-accent);color:#fff;border-radius:6px;padding:8px 14px;">Cluster 0</button>
-        <button class="code-tab-btn" id="cl-1" onclick="showCluster(1)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">Cluster 1</button>
-        <button class="code-tab-btn" id="cl-2" onclick="showCluster(2)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">Cluster 2</button>
-        <button class="code-tab-btn" id="cl-3" onclick="showCluster(3)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">Cluster 3</button>
-        <button class="code-tab-btn" id="cl-4" onclick="showCluster(4)" style="background:var(--c-bg-alt);color:var(--c-ink);border-radius:6px;padding:8px 14px;">Cluster 4</button>
-      </div>
-      <div id="clLabel" style="font-size:0.95rem;font-weight:600;color:var(--c-accent-dark);margin-bottom:12px;"></div>
-      <div class="chart-container" style="height:280px;"><canvas id="dotChart"></canvas></div>
-      <p style="font-size:0.82rem;color:var(--c-ink-muted);margin-top:8px;">長條高度 = 平均表達量 ｜ 根據 marker 基因的表達模式判斷細胞類型</p>
-    </div>
-  </section>
-
-  <section class="section"><div class="section-label">常用 Markers</div><h2>PBMC 常見標誌基因</h2>
-    <table class="comp-table"><thead><tr><th>細胞類型</th><th>Marker Genes</th></tr></thead><tbody>
-      <tr><td><strong>CD4+ T</strong></td><td>CD3D, CD3E, IL7R</td></tr>
-      <tr><td><strong>CD8+ T</strong></td><td>CD3D, CD8A, CD8B</td></tr>
-      <tr><td><strong>B 細胞</strong></td><td>MS4A1, CD79A</td></tr>
-      <tr><td><strong>NK</strong></td><td>GNLY, NKG7</td></tr>
-      <tr><td><strong>Monocytes</strong></td><td>CD14, LYZ, S100A8</td></tr>
-    </tbody></table>
-    <div class="callout warn"><span class="callout-icon">⚠️</span><div>上表僅適用於人類 PBMC。不同物種、組織的 markers 完全不同。</div></div>
-  </section>
-
-  <section class="section"><div class="section-label">程式碼</div><h2>實作範例</h2>
-    <div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R / Seurat</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python / Scanpy</button></div>
-      <div class="code-tab-content active" id="r1"><pre>markers &lt;- <span class="func">FindAllMarkers</span>(pbmc, only.pos = <span class="kw">TRUE</span>, min.pct = <span class="num">0.25</span>)
-<span class="func">DotPlot</span>(pbmc, features = <span class="func">c</span>(<span class="str">"CD3D"</span>,<span class="str">"MS4A1"</span>,<span class="str">"CD14"</span>,<span class="str">"GNLY"</span>)) + <span class="func">RotatedAxis</span>()
-new.ids &lt;- <span class="func">c</span>(<span class="str">"CD4 T"</span>, <span class="str">"CD14 Mono"</span>, <span class="str">"B cell"</span>, ...)
-pbmc &lt;- <span class="func">RenameIdents</span>(pbmc, new.ids)</pre></div>
-      <div class="code-tab-content" id="py1"><pre>sc.tl.rank_genes_groups(adata, groupby=<span class="str">"leiden"</span>, method=<span class="str">"wilcoxon"</span>)
-sc.pl.dotplot(adata, var_names=[<span class="str">"CD3D"</span>,<span class="str">"MS4A1"</span>,<span class="str">"CD14"</span>], groupby=<span class="str">"leiden"</span>)
-adata.obs[<span class="str">"cell_type"</span>] = adata.obs[<span class="str">"leiden"</span>].map({<span class="str">"0"</span>:<span class="str">"CD4 T"</span>,<span class="str">"1"</span>:<span class="str">"Mono"</span>,...})</pre></div>
-    </div>
-  </section>
-
-  <section class="quiz-section"><h3>📝 自我檢測</h3>
-    <div class="quiz-q" data-answer="2"><p>某 cluster 的 top markers 包括 CD3D 和 IL7R，最可能是？</p><div class="quiz-options"><div class="quiz-opt" data-idx="0">A. B 細胞</div><div class="quiz-opt" data-idx="1">B. NK 細胞</div><div class="quiz-opt" data-idx="2">C. CD4+ T 細胞</div><div class="quiz-opt" data-idx="3">D. Monocyte</div></div><div class="quiz-feedback" id="fb1"></div></div>
-  </section>
-  <nav class="page-nav"><a href="umap.html"><span class="nav-dir">← 上一步</span><span class="nav-title">Step 7：UMAP</span></a><a href="differential-expression.html"><span class="nav-dir">下一步 →</span><span class="nav-title">Step 9：DE</span></a></nav>
-</main>
-<footer class="site-footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
-<script>
-window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
+<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>STEP 8 / 9: Cell Annotation — scRNA-seq Tutorial</title><link rel="stylesheet" href="styles.css"></head><body>
+<nav class="top-nav"><div class="top-nav-inner"><a href="index.html" class="top-nav-brand"><span>🧬</span> <span data-i18n="brand">scRNA-seq 教學</span></a><ul class="top-nav-links"><li><a href="qc.html">QC</a></li><li><a href="normalization.html">Norm.</a></li><li><a href="variable-features.html">Features</a></li><li><a href="scaling.html">Scaling</a></li><li><a href="pca.html">PCA</a></li><li><a href="clustering.html">Clustering</a></li><li><a href="umap.html">UMAP</a></li><li><a href="annotation.html" class=active>Annot.</a></li><li><a href="differential-expression.html">DE</a></li><li><a href="integration.html">Integ.</a></li><li><a href="cellchat.html">CellChat</a></li><li><a href="trajectory.html">Traj.</a></li></ul></div></nav><div class="progress-bar-container"><div class="progress-bar" id="progressBar"></div></div>
+<header class="page-hero"><div class="step-badge">STEP 8 / 9</div><h1 data-i18n="title">細胞註釋 (Annotation)</h1><p class="subtitle" data-i18n="subtitle">將 Cluster 轉譯為有生物學意義的細胞類型名稱。</p></header>
+<main class="content-wrap"><section class="section"><div class="section-label" data-i18n="s1l">互動模擬</div><h2 data-i18n="s1t">Dot Plot 探索器</h2><p data-i18n="s1p">選擇 cluster 觀察 marker 基因表達。</p>
+<div class="interactive-panel"><div class="toggle-row">
+<button class="toggle-btn active" id="cl-0" onclick="showCl(0)">Cluster 0</button><button class="toggle-btn" id="cl-1" onclick="showCl(1)">Cluster 1</button><button class="toggle-btn" id="cl-2" onclick="showCl(2)">Cluster 2</button><button class="toggle-btn" id="cl-3" onclick="showCl(3)">Cluster 3</button><button class="toggle-btn" id="cl-4" onclick="showCl(4)">Cluster 4</button>
+</div><div id="clLabel" style="font-size:.95rem;font-weight:600;color:var(--c-accent-dark);margin-bottom:12px;"></div>
+<div class="chart-container" style="height:280px;"><canvas id="dotChart"></canvas></div></div></section>
+<section class="section"><div class="section-label" data-i18n="s2l">程式碼</div><h2 data-i18n="s2t">實作範例</h2>
+<div class="code-tabs"><div class="code-tab-btns"><button class="code-tab-btn active" onclick="switchTab(this,'r1')">R</button><button class="code-tab-btn" onclick="switchTab(this,'py1')">Python</button></div>
+<div class="code-tab-content active" id="r1"><pre>markers &lt;- <span class="func">FindAllMarkers</span>(pbmc, only.pos=<span class="kw">TRUE</span>)
+<span class="func">DotPlot</span>(pbmc, features=<span class="func">c</span>(<span class="str">"CD3D"</span>,<span class="str">"MS4A1"</span>,<span class="str">"CD14"</span>,<span class="str">"GNLY"</span>))</pre></div>
+<div class="code-tab-content" id="py1"><pre>sc.tl.rank_genes_groups(adata, groupby=<span class="str">"leiden"</span>, method=<span class="str">"wilcoxon"</span>)
+sc.pl.dotplot(adata, var_names=[<span class="str">"CD3D"</span>,<span class="str">"MS4A1"</span>,<span class="str">"CD14"</span>], groupby=<span class="str">"leiden"</span>)</pre></div></div></section>
+<section class="quiz-section"><h3 data-i18n="quizTitle">📝 自我檢測</h3>
+<div class="quiz-q" data-answer="2"><p data-i18n="q1">Top markers 含 CD3D + IL7R，最可能是？</p><div class="quiz-options">
+<div class="quiz-opt" data-idx="0" data-i18n="q1a">A. B cell</div><div class="quiz-opt" data-idx="1" data-i18n="q1b">B. NK cell</div><div class="quiz-opt" data-idx="2" data-i18n="q1c">C. CD4+ T cell</div><div class="quiz-opt" data-idx="3" data-i18n="q1d">D. Monocyte</div>
+</div><div class="quiz-feedback" id="fb1"></div></div></section>
+<nav class="page-nav"><a href="umap.html"><span class="nav-dir" data-i18n="_prev">← 上一步</span><span class="nav-title" data-i18n="_pt">Step 7：UMAP</span></a><a href="differential-expression.html"><span class="nav-dir" data-i18n="_next">下一步 →</span><span class="nav-title" data-i18n="_nt">Step 9：DE</span></a></nav></main>
+<footer class="site-footer" data-i18n="footer">© Charlene — scRNA-seq Interactive Tutorial</footer>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script><script src="i18n.js"></script>
+<script>window.addEventListener('scroll',()=>{const h=document.documentElement;document.getElementById('progressBar').style.width=(h.scrollTop/(h.scrollHeight-h.clientHeight))*100+'%';});
 function switchTab(b,id){const p=b.closest('.code-tabs');p.querySelectorAll('.code-tab-btn').forEach(x=>x.classList.remove('active'));p.querySelectorAll('.code-tab-content').forEach(x=>x.classList.remove('active'));b.classList.add('active');document.getElementById(id).classList.add('active');}
-
-const geneNames=['CD3D','CD3E','IL7R','CD8A','MS4A1','CD79A','GNLY','NKG7','CD14','LYZ'];
-const clusterData=[
-  {label:'→ CD4+ T 細胞（CD3D↑ IL7R↑）',vals:[3.8,3.2,3.5,0.3,0.1,0.1,0.2,0.3,0.1,0.2]},
-  {label:'→ CD8+ T 細胞（CD3D↑ CD8A↑）',vals:[3.5,3.0,0.8,3.2,0.1,0.1,1.5,1.8,0.1,0.2]},
-  {label:'→ B 細胞（MS4A1↑ CD79A↑）',vals:[0.2,0.1,0.1,0.1,4.2,3.8,0.1,0.1,0.2,0.3]},
-  {label:'→ NK 細胞（GNLY↑ NKG7↑）',vals:[0.3,0.2,0.2,0.5,0.1,0.1,4.5,4.0,0.1,0.2]},
-  {label:'→ CD14 Monocyte（CD14↑ LYZ↑）',vals:[0.1,0.1,0.1,0.1,0.1,0.1,0.2,0.3,4.0,4.5]}
-];
-
-const dotChart=new Chart(document.getElementById('dotChart'),{type:'bar',data:{labels:geneNames,datasets:[{data:clusterData[0].vals,backgroundColor:'rgba(26,107,90,0.6)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{title:{display:true,text:'平均表達量'},min:0,max:5.5},x:{title:{display:true,text:'基因'}}}}});
-
-function showCluster(i){
-  for(let j=0;j<5;j++){const b=document.getElementById('cl-'+j);b.style.background=j===i?'var(--c-accent)':'var(--c-bg-alt)';b.style.color=j===i?'#fff':'var(--c-ink)';}
-  document.getElementById('clLabel').textContent='Cluster '+i+' '+clusterData[i].label;
-  dotChart.data.datasets[0].data=clusterData[i].vals;
-  dotChart.update('none');
-}
-showCluster(0);
-
-document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));if(+o.dataset.idx===ans){o.classList.add('correct');fb.className='quiz-feedback show correct-fb';fb.textContent='✅ CD3D + IL7R 是 CD4+ T 細胞的經典標誌。';}else{o.classList.add('wrong');q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');fb.className='quiz-feedback show wrong-fb';fb.textContent='❌ 答案是 C。';}});});});
-</script>
-</body></html>
+I18n.registerTranslations({"zh": {"title": "細胞註釋 (Annotation)", "subtitle": "將 Cluster 轉譯為有生物學意義的細胞類型名稱。", "_prev": "← 上一步", "_pt": "Step 7：UMAP", "_next": "下一步 →", "_nt": "Step 9：DE", "s1l": "互動模擬", "s1t": "Dot Plot 探索器", "s1p": "選擇 cluster 觀察 marker 基因表達。", "s2l": "程式碼", "s2t": "實作範例", "q1": "Top markers 含 CD3D + IL7R，最可能是？", "q1a": "A. B cell", "q1b": "B. NK cell", "q1c": "C. CD4+ T cell", "q1d": "D. Monocyte"}, "en": {"title": "Cell Annotation", "subtitle": "Translate cluster numbers into cell type names.", "_prev": "← Previous", "_pt": "Step 7: UMAP", "_next": "Next →", "_nt": "Step 9: DE", "s1l": "Interactive", "s1t": "Dot Plot Explorer", "s1p": "Select a cluster to view marker gene expression.", "s2l": "Code", "s2t": "Code examples", "q1": "Top markers include CD3D + IL7R. Most likely?", "q1a": "A. B cell", "q1b": "B. NK cell", "q1c": "C. CD4+ T cell", "q1d": "D. Monocyte"}});
+const gN=['CD3D','CD3E','IL7R','CD8A','MS4A1','CD79A','GNLY','NKG7','CD14','LYZ'];
+const cD=[{zh:'→ CD4+ T 細胞',en:'→ CD4+ T cell',v:[3.8,3.2,3.5,0.3,0.1,0.1,0.2,0.3,0.1,0.2]},{zh:'→ CD8+ T 細胞',en:'→ CD8+ T cell',v:[3.5,3.0,0.8,3.2,0.1,0.1,1.5,1.8,0.1,0.2]},{zh:'→ B 細胞',en:'→ B cell',v:[0.2,0.1,0.1,0.1,4.2,3.8,0.1,0.1,0.2,0.3]},{zh:'→ NK 細胞',en:'→ NK cell',v:[0.3,0.2,0.2,0.5,0.1,0.1,4.5,4.0,0.1,0.2]},{zh:'→ CD14 Monocyte',en:'→ CD14 Monocyte',v:[0.1,0.1,0.1,0.1,0.1,0.1,0.2,0.3,4.0,4.5]}];
+const dotChart=new Chart(document.getElementById('dotChart'),{type:'bar',data:{labels:gN,datasets:[{data:cD[0].v,backgroundColor:'rgba(26,107,90,0.6)',borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{min:0,max:5.5,title:{display:true,text:'Expression'}},x:{}}}});
+let curCl=0;function showCl(i){curCl=i;for(let j=0;j<5;j++)document.getElementById('cl-'+j).classList.toggle('active',j===i);const L=I18n.getLang();document.getElementById('clLabel').textContent='Cluster '+i+' '+cD[i][L];dotChart.data.datasets[0].data=cD[i].v;dotChart.update('none');}
+document.addEventListener('langchange',()=>showCl(curCl));showCl(0);
+window.QF={zh:{q1_y:'CD3D + IL7R 是 CD4+ T 細胞經典標誌。',q1_n:'答案是 C。'},en:{q1_y:'CD3D + IL7R are classic CD4+ T cell markers.',q1_n:'Answer is C.'}};
+document.querySelectorAll('.quiz-q').forEach((q,qi)=>{const ans=+q.dataset.answer;q.querySelectorAll('.quiz-opt').forEach(o=>{o.addEventListener('click',()=>{if(q.classList.contains('answered'))return;q.classList.add('answered');const fb=document.getElementById('fb'+(qi+1));const ok=+o.dataset.idx===ans;o.classList.add(ok?'correct':'wrong');if(!ok)q.querySelectorAll('.quiz-opt')[ans].classList.add('correct');const L=I18n.getLang();const F=window.QF||{};fb.className='quiz-feedback show '+(ok?'correct-fb':'wrong-fb');fb.textContent=(ok?'✅ ':'❌ ')+(F[L]&&F[L]['q'+(qi+1)+'_'+(ok?'y':'n')]||'');});});});</script></body></html>
